@@ -643,7 +643,8 @@ class ZslStanfordCorpus(object):
                 id_turn = Pack(utt=self._sent2id(turn.utt),
                                speaker=turn.speaker,
                                domain=turn.domain,
-                               domain_id=self.rev_vocab[domain])
+                               domain_id=self.rev_vocab[domain],
+                               meta=turn.get('meta'))
                                #kb=[self._sent2id(item) for item in turn.get('kb', [])])
                 temp.append(id_turn)
 
