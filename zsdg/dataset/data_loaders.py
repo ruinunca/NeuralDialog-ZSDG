@@ -38,7 +38,7 @@ class ZslSMDDialDataLoader(DataLoader):
                 if response.speaker == USR:
                     continue
                 response['utt'] = self.pad_to(self.max_utt_size, response.utt, do_pad=False)
-                # response['kb'] = [self.pad_to(self.max_utt_size, item, do_pad=True) for item in response.kb]
+                response['kb'] = [self.pad_to(self.max_utt_size, item, do_pad=True) for item in response.kb]
 
                 contexts = []
                 for turn in dialog[s_id:e_id]:
@@ -94,8 +94,8 @@ class ZslSMDDialDataLoader(DataLoader):
 
             # source context
             batch_ctx = []
-            #for item in out_row.kb:
-            #    batch_ctx.append(item)
+            for item in out_row.kb:
+                batch_ctx.append(item)
             for turn in in_row:
                 batch_ctx.append(self.pad_to(self.max_utt_size, turn.utt))
 
@@ -122,9 +122,13 @@ class ZslSMDDialDataLoader(DataLoader):
             vec_out_utts[b_id, 0:vec_out_lens[b_id]] = out_utts[b_id]
             vec_ctx_utts[b_id, 0:vec_ctx_lens[b_id], :] = ctx_utts[b_id]
 
-        return Pack(context_lens=vec_ctx_lens, contexts=vec_ctx_utts, context_confs=vec_ctx_confs,
-                    output_lens=vec_out_lens, outputs=vec_out_utts,
-                    domains=domains, domain_metas=domain_metas)
+        return Pack(context_lens=vec_ctx_lens,
+                    contexts=vec_ctx_utts,
+                    context_confs=vec_ctx_confs,
+                    output_lens=vec_out_lens,
+                    outputs=vec_out_utts,
+                    domains=domains,
+                    domain_metas=domain_metas)
 
     def _prepare_warmup_batch(self, selected_ids):
         # the batch index, the starting point and end point for segment

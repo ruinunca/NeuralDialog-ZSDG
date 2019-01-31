@@ -582,7 +582,7 @@ class ZslStanfordCorpus(object):
                 if speaker == SYS:
                     dialog.append(Pack(utt=utt, speaker=speaker, slots=slots, domain=domain, kb=kb_items))
                 else:
-                    dialog.append(Pack(utt=utt, speaker=speaker, slots=slots, domain=domain))
+                    dialog.append(Pack(utt=utt, speaker=speaker, slots=slots, domain=domain, kb=[]))
 
             all_dialog_lens.append(len(dialog))
             new_dialog.append(dialog)
@@ -598,8 +598,8 @@ class ZslStanfordCorpus(object):
         for dialog in self.train_corpus:
             for turn in dialog:
                 all_words.extend(turn.utt)
-                #for item in turn.get('kb', []):
-                #    all_words.extend(item)
+                for item in turn.get('kb', []):
+                    all_words.extend(item)
 
         for resp in self.domain_descriptions:
             all_words.extend(resp.actions)
@@ -644,8 +644,8 @@ class ZslStanfordCorpus(object):
                                speaker=turn.speaker,
                                domain=turn.domain,
                                domain_id=self.rev_vocab[domain],
-                               meta=turn.get('meta'))
-                               #kb=[self._sent2id(item) for item in turn.get('kb', [])])
+                               meta=turn.get('meta'),
+                               kb=[self._sent2id(item) for item in turn.get('kb', [])])
                 temp.append(id_turn)
 
             results.append(temp)
