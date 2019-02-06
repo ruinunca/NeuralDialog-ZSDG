@@ -748,14 +748,13 @@ class KVZslStanfordCorpus(object):
         for dialog_idx, raw_dialog in enumerate(data):
             dialog_id = '{}.{}'.format(data_id, dialog_idx)
             domain = raw_dialog['scenario']['task']['intent']
-            kb_items = []
+            kb_items, kb_canonical_items = [], []
             if raw_dialog['scenario']['kb']['items'] is not None:
-                main_column = raw_dialog['scenario']['kb']['columns']
+                main_column = raw_dialog['scenario']['kb']['column_names'][0]
                 for item in raw_dialog['scenario']['kb']['items']:
-                    for column in raw_dialog['scenario']['kb']['columns'][1:]:
+                    for column in raw_dialog['scenario']['kb']['column_names'][1:]:
                         kb_items.append((item[main_column], column, item[column]))
                     kb_items.append((item[main_column], main_column, item[main_column]))
-                kb_canonical_items = []
                 for key, relation, value in kb_items:
                     canonical_item = '{}_{}'.format(key, relation)
                     kb_canonical_items.append(canonical_item)
@@ -805,10 +804,10 @@ class KVZslStanfordCorpus(object):
         for dialog in self.train_corpus:
             for turn in dialog:
                 all_words.extend(turn.utt)
-            for dialog_id, kb in self.kb.items():
-                for canonical_key, value in kb.items():
-                    all_words.add(canonical_key)
-                    all_words.add(value)
+        for dialog_id, kb in self.kb.items():
+            for canonical_key, value in kb.items():
+                all_words.append(canonical_key)
+                all_words.append(value)
 
         for resp in self.domain_descriptions:
             all_words.extend(resp.actions)
@@ -854,7 +853,7 @@ class KVZslStanfordCorpus(object):
                                domain=turn.domain,
                                domain_id=self.rev_vocab[domain],
                                meta=turn.get('meta'),
-                               kb=[self._sent2id(item) for item in turn.get('kb', [])])
+                               kb=self._sent2id(turn.get('kb', [])))
                 temp.append(id_turn)
 
             results.append(temp)

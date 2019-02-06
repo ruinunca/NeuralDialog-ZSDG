@@ -194,7 +194,7 @@ class KVZslSMDDialDataLoader(DataLoader):
                 if response.speaker == USR:
                     continue
                 response['utt'] = self.pad_to(self.max_utt_size, response.utt, do_pad=False)
-                response['kb'] = [self.pad_to(self.max_utt_size, item, do_pad=True) for item in response.kb]
+                response['kb'] = self.pad_to(self.max_utt_size, response.kb, do_pad=True)
 
                 contexts = []
                 for turn in dialog[s_id:e_id]:
@@ -204,7 +204,7 @@ class KVZslSMDDialDataLoader(DataLoader):
         return results
 
     def epoch_init(self, config, shuffle=True, verbose=True):
-        super(ZslSMDDialDataLoader, self).epoch_init(config, shuffle, verbose)
+        super(KVZslSMDDialDataLoader, self).epoch_init(config, shuffle, verbose)
         self.warmup_flags = [False] * self.num_batch
 
         if self.warmup_data is None:
@@ -250,8 +250,7 @@ class KVZslSMDDialDataLoader(DataLoader):
 
             # source context
             batch_ctx = []
-            for item in out_row.kb:
-                batch_ctx.append(item)
+            batch_ctx.append(out_row.kb)
             for turn in in_row:
                 batch_ctx.append(self.pad_to(self.max_utt_size, turn.utt))
 

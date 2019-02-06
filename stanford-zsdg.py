@@ -2,7 +2,7 @@
 # author: Tiancheng Zhao
 from __future__ import print_function
 
-from zsdg.dataset.corpora import ZslStanfordCorpus, SYS
+from zsdg.dataset.corpora import KVZslStanfordCorpus, SYS
 from zsdg.dataset import data_loaders
 from zsdg.models import models
 from zsdg.main import train, validate
@@ -109,7 +109,7 @@ misc_arg.add_argument('--load_sess', type=str, default="ENTER_YOUR_PATH_HERE")
 def main(config):
     prepare_dirs_loggers(config, os.path.basename(__file__))
 
-    corpus_client = ZslStanfordCorpus(config)
+    corpus_client = KVZslStanfordCorpus(config)
     warmup_data = corpus_client.get_seed_responses(config.target_example_cnt)
     dial_corpus = corpus_client.get_corpus()
     train_dial, valid_dial, test_dial = dial_corpus['train'],\
@@ -119,9 +119,9 @@ def main(config):
     evaluator = evaluators.BleuEntEvaluator("SMD", corpus_client.ent_metas)
 
     # create data loader that feed the deep models
-    train_feed = data_loaders.ZslSMDDialDataLoader("Train", train_dial, config, warmup_data)
-    valid_feed = data_loaders.ZslSMDDialDataLoader("Valid", valid_dial, config)
-    test_feed = data_loaders.ZslSMDDialDataLoader("Test", test_dial, config)
+    train_feed = data_loaders.KVZslSMDDialDataLoader("Train", train_dial, corpus_client.kb, config, warmup_data)
+    valid_feed = data_loaders.KVZslSMDDialDataLoader("Valid", valid_dial, corpus_client.kb, config)
+    test_feed = data_loaders.KVZslSMDDialDataLoader("Test", test_dial, corpus_client.kb, config)
     if config.action_match:
         if config.use_ptr:
             model = models.ZeroShotPtrHRED(corpus_client, config)
