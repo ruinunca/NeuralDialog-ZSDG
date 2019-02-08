@@ -726,8 +726,7 @@ class KVZslStanfordCorpus(object):
                         utt = [BOS, speaker_map[speaker]] + self.tokenize(utt) + [EOS]
                         action = [BOS, speaker_map[speaker]] + self.tokenize(action) + [EOS]
 
-                    seed_responses.append(Pack(domain=domain, speaker=speaker,
-                                               utt=utt, actions=action))
+                    seed_responses.append(Pack(domain=domain, speaker=speaker, utt=utt, actions=action))
 
         _read_file('navigate')
         _read_file('schedule')
@@ -749,12 +748,7 @@ class KVZslStanfordCorpus(object):
             dialog_id = '{}.{}'.format(data_id, dialog_idx)
             domain = raw_dialog['scenario']['task']['intent']
             kb_items, kb_canonical_items = [], []
-            if raw_dialog['scenario']['kb']['items'] is not None:
-                main_column = raw_dialog['scenario']['kb']['column_names'][0]
-                for item in raw_dialog['scenario']['kb']['items']:
-                    for column in raw_dialog['scenario']['kb']['column_names'][1:]:
-                        kb_items.append((item[main_column], column, item[column]))
-                    kb_items.append((item[main_column], main_column, item[main_column]))
+            if len(raw_dialog['scenario']['kb']['canonical_items']):
                 for key, relation, value in kb_items:
                     canonical_item = '{}_{}'.format(key, relation)
                     kb_canonical_items.append(canonical_item)

@@ -112,9 +112,7 @@ def main(config):
     corpus_client = KVZslStanfordCorpus(config)
     warmup_data = corpus_client.get_seed_responses(config.target_example_cnt)
     dial_corpus = corpus_client.get_corpus()
-    train_dial, valid_dial, test_dial = dial_corpus['train'],\
-                                        dial_corpus['valid'],\
-                                        dial_corpus['test']
+    train_dial, valid_dial, test_dial = dial_corpus['train'], dial_corpus['valid'], dial_corpus['test']
 
     evaluator = evaluators.BleuEntEvaluator("SMD", corpus_client.ent_metas)
 
@@ -140,8 +138,7 @@ def main(config):
         model_file = os.path.join(config.log_dir, config.load_sess, "model")
     else:
         session_dir = config.session_dir
-        test_file = os.path.join(config.session_dir,
-                                 "{}-test-{}.txt".format(get_time(), config.gen_type))
+        test_file = os.path.join(config.session_dir, "{}-test-{}.txt".format(get_time(), config.gen_type))
         model_file = os.path.join(config.session_dir, "model")
 
     if config.use_gpu:
