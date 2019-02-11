@@ -749,10 +749,9 @@ class KVZslStanfordCorpus(object):
             domain = raw_dialog['scenario']['task']['intent']
             kb_items, kb_canonical_items = [], []
             if len(raw_dialog['scenario']['kb']['canonical_items']):
-                for key, relation, value in kb_items:
-                    canonical_item = '{}_{}'.format(key, relation)
-                    kb_canonical_items.append(canonical_item)
-                    self.kb[dialog_id][canonical_item] = value
+                for key_relation in raw_dialog['scenario']['kb']['canonical_items']:
+                    kb_canonical_items.append(key_relation)
+                    self.kb[key_relation] = key_relation
 
             dialog = [Pack(utt=[BOS, domain, BOD, EOS],
                            speaker=USR,
@@ -798,10 +797,9 @@ class KVZslStanfordCorpus(object):
         for dialog in self.train_corpus:
             for turn in dialog:
                 all_words.extend(turn.utt)
-        for dialog_id, kb in self.kb.items():
-            for canonical_key, value in kb.items():
-                all_words.append(canonical_key)
-                all_words.append(value)
+        for canonical_key, value in self.kb.items():
+            all_words.append(canonical_key)
+            # all_words.append(value)
 
         for resp in self.domain_descriptions:
             all_words.extend(resp.actions)

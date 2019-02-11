@@ -4,6 +4,7 @@ import os
 from argparse import ArgumentParser
 import json
 import copy
+import shutil
 
 WARN_COUNTER = 0
 
@@ -40,15 +41,17 @@ def canonicalize_dialog(in_dialog):
             if kb_entry_value in turn['data']['utterance']:
                 # print '[Turn {}] {} ---> {}'.format(turn_idx, kb_entry_value, kb_entry_key)
                 turn['data']['utterance'] = turn['data']['utterance'].replace(kb_entry_value, kb_entry_key)
-    result['scenario']['kb']['item_canonical'] = {key: value for key, value in kb_entries_canonicalized}
+    result['scenario']['kb']['canonical_items'] = {key: value for key, value in kb_entries_canonicalized}
     return result
 
 
 def main(in_src_folder, in_dst_folder):
+    if os.path.exists(in_dst_folder):
+        shutil.rmtree(in_dst_folder)
+    shutil.copytree(in_src_folder, in_dst_folder)
+
     with open(os.path.join(in_src_folder, 'kvret_entities.json')) as entities_in:
         entities = json.load(entities_in)
-    if not os.path.exists(in_dst_folder):
-        os.makedirs(in_dst_folder)
     datasets = {}
     for dataset_name in ['train', 'dev', 'test']:
         filename = 'kvret_{}_public.json'.format(dataset_name)

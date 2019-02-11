@@ -53,7 +53,7 @@ net_arg.add_argument('--utt_cell_size', type=int, default=256)
 net_arg.add_argument('--ctx_cell_size', type=int, default=512)
 net_arg.add_argument('--dec_cell_size', type=int, default=512)
 net_arg.add_argument('--bi_ctx_cell', type=str2bool, default=False)
-net_arg.add_argument('--max_utt_len', type=int, default=20)
+net_arg.add_argument('--max_utt_len', type=int, default=50)
 net_arg.add_argument('--max_dec_len', type=int, default=40)
 net_arg.add_argument('--num_layer', type=int, default=1)
 net_arg.add_argument('--use_attn', type=str2bool, default=True)
@@ -114,7 +114,9 @@ def main(config):
     dial_corpus = corpus_client.get_corpus()
     train_dial, valid_dial, test_dial = dial_corpus['train'], dial_corpus['valid'], dial_corpus['test']
 
-    evaluator = evaluators.BleuEntEvaluator("SMD", corpus_client.ent_metas)
+    ent_metas_kv = {None: corpus_client.kb.keys()}
+
+    evaluator = evaluators.BleuEntEvaluator("SMD", ent_metas_kv)  # corpus_client.ent_metas)
 
     # create data loader that feed the deep models
     train_feed = data_loaders.KVZslSMDDialDataLoader("Train", train_dial, corpus_client.kb, config, warmup_data)
@@ -167,3 +169,4 @@ if __name__ == "__main__":
     config, unparsed = get_config()
     config = process_config(config)
     main(config)
+
