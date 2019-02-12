@@ -195,6 +195,7 @@ class KVZslSMDDialDataLoader(DataLoader):
                     continue
                 response['utt'] = self.pad_to(self.max_utt_size, response.utt, do_pad=False)
                 response['kb'] = self.pad_to(self.max_utt_size, response.kb, do_pad=True)
+                response['kb_canonical'] = self.pad_to(self.max_utt_size, response.kb_canonical, do_pad=True)
 
                 contexts = []
                 for turn in dialog[s_id:e_id]:
@@ -250,7 +251,6 @@ class KVZslSMDDialDataLoader(DataLoader):
 
             # source context
             batch_ctx = []
-            batch_ctx.append(out_row.kb)
             for turn in in_row:
                 batch_ctx.append(self.pad_to(self.max_utt_size, turn.utt))
 
@@ -283,7 +283,11 @@ class KVZslSMDDialDataLoader(DataLoader):
                     output_lens=vec_out_lens,
                     outputs=vec_out_utts,
                     domains=domains,
-                    domain_metas=domain_metas)
+                    domain_metas=domain_metas,
+                    kb=out_row.kb,
+                    kb_lens=np.array([len(x) for x in out_row.kb]),
+                    kb_canonical=out_row.kb_canonical,
+                    kb_canoncial_lens=np.array([len(x) for x in out_row.kb_canonical]))
 
     def _prepare_warmup_batch(self, selected_ids):
         # the batch index, the starting point and end point for segment
@@ -537,4 +541,3 @@ class SimDialDataLoader(LongDataLoader):
 
         return Pack(output_lens=vec_out_lens, outputs=vec_out_utts, output_actions=vec_out_acts,
                     domains=domains, domain_metas=vec_domain_metas)
-

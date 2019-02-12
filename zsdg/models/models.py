@@ -2,7 +2,6 @@
 # author: Tiancheng Zhao
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 from zsdg.dataset.corpora import PAD, BOS, EOS, BOD
 from zsdg import criterions
 from zsdg.enc2dec.decoders import DecoderRNN, DecoderPointerGen
@@ -497,6 +496,132 @@ class ZeroShotPtrHRED(PtrBase):
         dec_outs, dec_last, dec_ctx = self.decoder(batch_size, attn_inputs, attn_words,
                                                    inputs=dec_inputs, init_state=dec_init_state,
                                                    mode=mode, gen_type=gen_type)
+        if mode == GEN:
+            return dec_ctx, labels
+        else:
+            loss_pack = self.compute_loss(dec_outs, dec_ctx, labels)
+            if return_latent:
+                loss_pack['latent_actions'] = latent_action
+            loss_pack['distance'] = self.l2_loss(out_embedded, latent_action)
+            return loss_pack
+
+
+class KVPtrHRED(PtrBase):
+    def __init__(self, corpus, config):
+        super(ZeroShotPtrHRED, self).__init__(config)
+
+        self.vocab = corpus.vocab
+        self.rev_vocab = corpus.rev_vocab
+        self.vocab_size = len(self.vocab)
+        self.go_id = self.rev_vocab[BOS]
+        self.eos_id = self.rev_vocab[EOS]
+        self.pad_id = self.rev_vocab[PAD]
+
+        # build model here
+        self.embedding = nn.Embedding(self.vocab_size, config.embed_size, padding_idx=self.pad_id)
+
+        self.utt_encoder = RnnUttEncoder(config.utt_cell_size,
+                                         config.dropout,
+                                         use_attn=config.utt_type == 'rnn_attn',
+                                         vocab_size=self.vocab_size,
+                                         embedding=self.embedding,
+                                         feat_size=1)
+
+        self.ctx_encoder = EncoderRNN(self.utt_encoder.output_size,
+                                      config.ctx_cell_size,
+                                      0.0,
+                                      config.dropout,
+                                      config.num_layer,
+                                      config.rnn_cell,
+                                      variable_lengths=False,
+                                      bidirection=config.bi_ctx_cell)
+
+        self.policy = nn.Linear(self.ctx_encoder.output_size, config.dec_cell_size)
+        self.utt_policy = lambda x: x
+
+        self.connector = nn_lib.LinearConnector(config.dec_cell_size,
+                                                config.dec_cell_size,
+                                                is_lstm=config.rnn_cell == 'lstm')
+
+        self.attn_size = self.ctx_encoder.output_size
+        self.decoder = DecoderPointerGen(self.vocab_size,
+                                         config.max_dec_len,
+                                         config.embed_size,
+                                         config.dec_cell_size,
+                                         self.go_id,
+                                         self.eos_id,
+                                         n_layers=1,
+                                         rnn_cell=config.rnn_cell,
+                                         input_dropout_p=config.dropout,
+                                         dropout_p=config.dropout,
+                                         attn_size=self.attn_size,
+                                         attn_mode=config.attn_type,
+                                         use_gpu=config.use_gpu,
+                                         embedding=self.embedding)
+
+        self.nll_loss = criterions.NLLEntropy(self.pad_id, config)
+        self.l2_loss = criterions.L2Loss()
+
+    def valid_loss(self, loss, batch_cnt=None):
+        total_loss = loss.distance + loss.nll + 0.01 * loss.attn_loss
+        return total_loss
+
+    def forward(self, data_feed, mode, gen_type='greedy', return_latent=False):
+        # optional fields
+        ctx_lens = data_feed.get('context_lens')
+        ctx_utts = self.np2var(data_feed.get('contexts'), LONG)
+        ctx_confs = self.np2var(data_feed.get('context_confs'), FLOAT)
+        out_acts = self.np2var(data_feed.get('output_actions'), LONG)
+
+        # required fields
+        out_utts = self.np2var(data_feed['outputs'], LONG)
+        batch_size = len(data_feed['outputs'])
+        out_confs = self.np2var(np.ones((batch_size, 1)), FLOAT)
+
+        out_embedded, out_outs, _, _ = self.utt_encoder(out_utts.unsqueeze(1), out_confs, return_all=True)
+        out_embedded = self.utt_policy(out_embedded.squeeze(1))
+
+        # domain description batch
+        if ctx_lens is None:
+            act_embedded, act_outs, _, _ = self.utt_encoder(out_acts.unsqueeze(1), out_confs, return_all=True)
+            act_embedded = act_embedded.squeeze(1)
+
+            # create attention contexts
+            attn_inputs = act_outs.contiguous().view(batch_size, -1, self.utt_encoder.output_size)
+            attn_words = out_acts.view(batch_size, -1)
+            latent_action = self.utt_policy(act_embedded)
+        # dialog batch
+        else:
+            utt_embedded, utt_outs, _, _ = self.utt_encoder(ctx_utts, ctx_confs, return_all=True)
+            ctx_outs, ctx_last = self.ctx_encoder(utt_embedded, ctx_lens)
+            pi_inputs = self._gather_last_out(ctx_outs, ctx_lens)
+
+            # create decoder initial states
+            latent_action = self.policy(pi_inputs)
+
+            # create attention contexts
+            ctx_outs = ctx_outs.unsqueeze(2).repeat(1, 1, ctx_utts.size(2), 1).view(batch_size, -1, self.ctx_encoder.output_size)
+            utt_outs = utt_outs.contiguous().view(batch_size, -1, self.utt_encoder.output_size)
+            attn_inputs = ctx_outs + utt_outs  # batch_size x num_word x attn_size
+            attn_words = ctx_utts.view(batch_size, -1)  # batch_size x num_words
+
+        dec_init_state = self.connector(latent_action)
+
+        # mask out PAD words in the attention inputs
+        attn_inputs, attn_words = self._remove_padding(attn_inputs, attn_words)
+
+        # get decoder inputs
+        labels = out_utts[:, 1:].contiguous()
+        dec_inputs = out_utts[:, 0:-1]
+
+        # decode
+        dec_outs, dec_last, dec_ctx = self.decoder(batch_size,
+                                                   attn_inputs,
+                                                   attn_words,
+                                                   inputs=dec_inputs,
+                                                   init_state=dec_init_state,
+                                                   mode=mode,
+                                                   gen_type=gen_type)
         if mode == GEN:
             return dec_ctx, labels
         else:

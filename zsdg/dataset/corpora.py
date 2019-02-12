@@ -751,6 +751,7 @@ class KVZslStanfordCorpus(object):
             if len(raw_dialog['scenario']['kb']['canonical_items']):
                 for key_relation in raw_dialog['scenario']['kb']['canonical_items']:
                     kb_canonical_items.append(key_relation)
+                    kb_items.append(key_relation.split('_'))
                     self.kb[key_relation] = key_relation
 
             dialog = [Pack(utt=[BOS, domain, BOD, EOS],
@@ -773,7 +774,8 @@ class KVZslStanfordCorpus(object):
                                        speaker=speaker,
                                        slots=slots,
                                        domain=domain,
-                                       kb=kb_canonical_items,
+                                       kb=kb_items,
+                                       kb_canoncial=kb_canonical_items,
                                        dialog_id='{}.{}'.format(data_id, dialog_idx)))
                 else:
                     dialog.append(Pack(utt=utt,
@@ -781,6 +783,7 @@ class KVZslStanfordCorpus(object):
                                        slots=slots,
                                        domain=domain,
                                        kb=[],
+                                       kb_canoncial=[],
                                        dialog_id=dialog_id))
 
             all_dialog_lens.append(len(dialog))
@@ -799,6 +802,7 @@ class KVZslStanfordCorpus(object):
                 all_words.extend(turn.utt)
         for canonical_key, value in self.kb.items():
             all_words.append(canonical_key)
+            all_words += canonical_key.split('_')
             # all_words.append(value)
 
         for resp in self.domain_descriptions:
@@ -845,7 +849,8 @@ class KVZslStanfordCorpus(object):
                                domain=turn.domain,
                                domain_id=self.rev_vocab[domain],
                                meta=turn.get('meta'),
-                               kb=self._sent2id(turn.get('kb', [])))
+                               kb=self._sent2id(turn.get('kb', [])),
+                               kb_canonical=self._sent2id(turn.get('kb_canonical', [])))
                 temp.append(id_turn)
 
             results.append(temp)
