@@ -748,11 +748,14 @@ class KVZslStanfordCorpus(object):
             dialog_id = '{}.{}'.format(data_id, dialog_idx)
             domain = raw_dialog['scenario']['task']['intent']
             kb_items, kb_canonical_items = [], []
-            if len(raw_dialog['scenario']['kb']['canonical_items']):
-                for key_relation in raw_dialog['scenario']['kb']['canonical_items']:
-                    kb_canonical_items.append(key_relation)
-                    kb_items.append(key_relation.split('_'))
-                    self.kb[key_relation] = key_relation
+            raw_canonical_kb = raw_dialog['scenario']['kb']['canonical_items']
+            
+            if not len(raw_canonical_kb):
+                raw_canonical_kb['EMPTY_KB'] = 'EMPTY'
+            for key_relation in raw_canonical_kb:
+                kb_canonical_items.append(key_relation)
+                kb_items.append(key_relation.split('_'))
+                self.kb[key_relation] = key_relation
 
             dialog = [Pack(utt=[BOS, domain, BOD, EOS],
                            speaker=USR,
@@ -775,7 +778,7 @@ class KVZslStanfordCorpus(object):
                                        slots=slots,
                                        domain=domain,
                                        kb=kb_items,
-                                       kb_canoncial=kb_canonical_items,
+                                       kb_canonical=kb_canonical_items,
                                        dialog_id='{}.{}'.format(data_id, dialog_idx)))
                 else:
                     dialog.append(Pack(utt=utt,
@@ -849,7 +852,7 @@ class KVZslStanfordCorpus(object):
                                domain=turn.domain,
                                domain_id=self.rev_vocab[domain],
                                meta=turn.get('meta'),
-                               kb=self._sent2id(turn.get('kb', [])),
+                               kb=[self._sent2id(sent) for sent in turn.get('kb', [])],
                                kb_canonical=self._sent2id(turn.get('kb_canonical', [])))
                 temp.append(id_turn)
 

@@ -194,8 +194,9 @@ class KVZslSMDDialDataLoader(DataLoader):
                 if response.speaker == USR:
                     continue
                 response['utt'] = self.pad_to(self.max_utt_size, response.utt, do_pad=False)
-                response['kb'] = self.pad_to(self.max_utt_size, response.kb, do_pad=True)
-                response['kb_canonical'] = self.pad_to(self.max_utt_size, response.kb_canonical, do_pad=True)
+                kb_entries_padded = [self.pad_to(10, kb_i, do_pad=True) for kb_i in response.kb]
+                response['kb'] = self.pad_to(self.max_utt_size, kb_entries_padded, do_pad=False)
+                response['kb_canonical'] = self.pad_to(self.max_utt_size, response.kb_canonical, do_pad=False)
 
                 contexts = []
                 for turn in dialog[s_id:e_id]:
@@ -245,6 +246,8 @@ class KVZslSMDDialDataLoader(DataLoader):
         cxt_lens, ctx_utts = [], []
         out_utts, out_lens = [], []
         domains, domain_metas = [], []
+        kb_lens, kb = [], []
+        kb_canonical = []
 
         for row in rows:
             in_row, out_row = row.context, row.response
@@ -264,18 +267,29 @@ class KVZslSMDDialDataLoader(DataLoader):
             domains.append(out_row.domain)
             domain_metas.append(out_row.domain_id)
 
+            # kb
+            kb_lens.append(len(out_row.kb))
+            kb.append(out_row.kb)
+            kb_canonical.append(out_row.kb_canonical)
+        
+        kb = [np.array(kb_i) for kb_i in kb]
         domain_metas = np.array(domain_metas)
         vec_ctx_lens = np.array(cxt_lens)
         max_ctx_len = np.max(vec_ctx_lens)
         vec_ctx_utts = np.zeros((self.batch_size, max_ctx_len, self.max_utt_size), dtype=np.int32)
         vec_ctx_confs = np.ones((self.batch_size, max_ctx_len), dtype=np.float32)
 
+        vec_kb = np.zeros((self.batch_size, max(kb_lens), 10))
+        vec_kb_canonical = np.zeros((self.batch_size, max(kb_lens)))
+        vec_kb_confs = np.ones((self.batch_size, max(kb_lens)), dtype=np.float32)
         vec_out_utts = np.zeros((self.batch_size, np.max(out_lens)), dtype=np.int32)
         vec_out_lens = np.array(out_lens)
 
         for b_id in range(self.batch_size):
             vec_out_utts[b_id, 0:vec_out_lens[b_id]] = out_utts[b_id]
             vec_ctx_utts[b_id, 0:vec_ctx_lens[b_id], :] = ctx_utts[b_id]
+            vec_kb[b_id, 0: kb_lens[b_id]] = kb[b_id]
+            vec_kb_canonical[b_id, 0: kb_lens[b_id]] = kb_canonical[b_id]
 
         return Pack(context_lens=vec_ctx_lens,
                     contexts=vec_ctx_utts,
@@ -284,10 +298,10 @@ class KVZslSMDDialDataLoader(DataLoader):
                     outputs=vec_out_utts,
                     domains=domains,
                     domain_metas=domain_metas,
-                    kb=out_row.kb,
-                    kb_lens=np.array([len(x) for x in out_row.kb]),
-                    kb_canonical=out_row.kb_canonical,
-                    kb_canoncial_lens=np.array([len(x) for x in out_row.kb_canonical]))
+                    kb=vec_kb,
+                    kb_confs=vec_kb_confs,
+                    kb_lens=kb_lens,
+                    kb_canonical=vec_kb_canonical)
 
     def _prepare_warmup_batch(self, selected_ids):
         # the batch index, the starting point and end point for segment

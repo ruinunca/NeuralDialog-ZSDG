@@ -508,7 +508,7 @@ class ZeroShotPtrHRED(PtrBase):
 
 class KVPtrHRED(PtrBase):
     def __init__(self, corpus, config):
-        super(ZeroShotPtrHRED, self).__init__(config)
+        super(KVPtrHRED, self).__init__(config)
 
         self.vocab = corpus.vocab
         self.rev_vocab = corpus.rev_vocab
@@ -581,6 +581,11 @@ class KVPtrHRED(PtrBase):
         out_embedded, out_outs, _, _ = self.utt_encoder(out_utts.unsqueeze(1), out_confs, return_all=True)
         out_embedded = self.utt_policy(out_embedded.squeeze(1))
 
+        kb_lens = data_feed.get('kb_lens')
+        kb = data_feed.get('kb')
+        kb_canonical = self.np2var(data_feed.get('kb_canonical'), LONG)
+        kb_confs = data_feed.get('kb_confs')
+        kb_embedded, kb_outs, _, _ = self.utt_encoder(self.np2var(kb, LONG), self.np2var(kb_confs, FLOAT), return_all=True)
         # domain description batch
         if ctx_lens is None:
             act_embedded, act_outs, _, _ = self.utt_encoder(out_acts.unsqueeze(1), out_confs, return_all=True)
@@ -600,15 +605,18 @@ class KVPtrHRED(PtrBase):
             latent_action = self.policy(pi_inputs)
 
             # create attention contexts
-            ctx_outs = ctx_outs.unsqueeze(2).repeat(1, 1, ctx_utts.size(2), 1).view(batch_size, -1, self.ctx_encoder.output_size)
-            utt_outs = utt_outs.contiguous().view(batch_size, -1, self.utt_encoder.output_size)
-            attn_inputs = ctx_outs + utt_outs  # batch_size x num_word x attn_size
-            attn_words = ctx_utts.view(batch_size, -1)  # batch_size x num_words
+            # ctx_outs = ctx_outs.unsqueeze(2).repeat(1, 1, ctx_utts.size(2), 1).view(batch_size, -1, self.ctx_encoder.output_size)
+            # utt_outs = utt_outs.contiguous().view(batch_size, -1, self.utt_encoder.output_size)
+            # attn_inputs = ctx_outs + utt_outs  # batch_size x num_word x attn_size
+            attn_inputs = kb_embedded
+            # attn_words = ctx_utts.view(batch_size, -1)  # batch_size x num_words
+            attn_kb_canonical = kb_canonical.view(batch_size, -1)
 
         dec_init_state = self.connector(latent_action)
 
         # mask out PAD words in the attention inputs
-        attn_inputs, attn_words = self._remove_padding(attn_inputs, attn_words)
+        # attn_inputs, attn_words = self._remove_padding(attn_inputs, attn_words)
+        attn_inputs, attn_words = self._remove_padding(attn_inputs, attn_kb_canonical)
 
         # get decoder inputs
         labels = out_utts[:, 1:].contiguous()

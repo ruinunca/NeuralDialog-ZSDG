@@ -124,12 +124,12 @@ def main(config):
     test_feed = data_loaders.KVZslSMDDialDataLoader("Test", test_dial, corpus_client.kb, config)
     if config.action_match:
         if config.use_ptr:
-            model = models.ZeroShotPtrHRED(corpus_client, config)
+            model = models.KVPtrHRED(corpus_client, config)
         else:
             model = models.ZeroShotHRED(corpus_client, config)
     else:
         if config.use_ptr:
-            model = models.PtrHRED(corpus_client, config)
+            model = models.KVPtrHRED(corpus_client, config)
         else:
             model = models.HRED(corpus_client, config)
 
