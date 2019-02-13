@@ -254,6 +254,137 @@ class PtrHRED(PtrBase):
             return results
 
 
+class KVPtrHRED(PtrBase):
+
+    def valid_loss(self, loss, batch_cnt=None):
+        total_loss = loss.nll + 0.01 * loss.attn_loss
+        return total_loss
+
+    def __init__(self, corpus, config):
+        super(KVPtrHRED, self).__init__(config)
+
+        self.vocab = corpus.vocab
+        self.rev_vocab = corpus.rev_vocab
+        self.vocab_size = len(self.vocab)
+        self.go_id = self.rev_vocab[BOS]
+        self.eos_id = self.rev_vocab[EOS]
+        self.pad_id = self.rev_vocab[PAD]
+
+        # build model here
+        self.embedding = nn.Embedding(self.vocab_size, config.embed_size)
+
+        self.utt_encoder = RnnUttEncoder(config.utt_cell_size,
+                                         config.dropout,
+                                         use_attn=True,
+                                         vocab_size=self.vocab_size,
+                                         embedding=self.embedding,
+                                         feat_size=1)
+
+        self.ctx_encoder = EncoderRNN(self.utt_encoder.output_size,
+                                      config.ctx_cell_size,
+                                      0.0,
+                                      config.dropout,
+                                      config.num_layer,
+                                      config.rnn_cell,
+                                      variable_lengths=False,
+                                      bidirection=config.bi_ctx_cell)
+
+        if config.bi_ctx_cell or config.num_layer > 1:
+            self.connector = Bi2UniConnector(config.rnn_cell,
+                                             config.num_layer,
+                                             config.ctx_cell_size,
+                                             config.dec_cell_size)
+        else:
+            self.connector = IdentityConnector()
+
+        self.attn_size = self.ctx_encoder.output_size
+
+        self.decoder = DecoderPointerGen(self.vocab_size,
+                                         config.max_dec_len,
+                                         config.embed_size,
+                                         config.dec_cell_size,
+                                         self.go_id,
+                                         self.eos_id,
+                                         n_layers=1,
+                                         rnn_cell=config.rnn_cell,
+                                         input_dropout_p=config.dropout,
+                                         dropout_p=config.dropout,
+                                         attn_size=self.attn_size,
+                                         attn_mode=config.attn_type,
+                                         use_gpu=config.use_gpu,
+                                         embedding=self.embedding)
+
+        self.nll_loss = criterions.NLLEntropy(self.pad_id, config)
+
+    def forward(self, data_feed, mode, gen_type='greedy', return_latent=False):
+        """
+        B: batch_size, D: context_size U: utt_size, X: response_size
+        1. ctx_lens: B x 1
+        2. ctx_utts: B x D x U
+        3. ctx_confs: B x D
+        4. ctx_floors: B x D
+        5. out_lens: B x 1
+        6. out_utts: B x X
+
+        :param data_feed:
+        {'ctx_lens': vec_ctx_lens, 'ctx_utts': vec_ctx_utts,
+         'ctx_confs': vec_ctx_confs, 'ctx_floors': vec_ctx_floors,
+         'out_lens': vec_out_lens, 'out_utts': vec_out_utts}
+        :param return_label
+        :param dec_type
+        :return: outputs
+        """
+        ctx_lens = data_feed['context_lens']
+        ctx_utts = self.np2var(data_feed['contexts'], LONG)
+        ctx_confs = self.np2var(data_feed['context_confs'], FLOAT)
+        out_utts = self.np2var(data_feed['outputs'], LONG)
+        batch_size = len(ctx_lens)
+
+        utt_embedded, utt_outs, _, _ = self.utt_encoder(ctx_utts, ctx_confs, return_all=True)
+
+        ctx_outs, ctx_last = self.ctx_encoder(utt_embedded, ctx_lens)
+
+        kb = data_feed.get('kb')
+        kb_canonical = self.np2var(data_feed.get('kb_canonical'), LONG)
+        kb_confs = data_feed.get('kb_confs')
+        kb_embedded, kb_outs, _, _ = self.utt_encoder(self.np2var(kb, LONG), self.np2var(kb_confs, FLOAT),
+                                                      return_all=True)
+
+        # get decoder inputs
+        labels = out_utts[:, 1:].contiguous()
+        dec_inputs = out_utts[:, 0:-1]
+
+        # create decoder initial states
+        dec_init_state = self.connector(ctx_last)
+
+        # attention
+        # ctx_outs = ctx_outs.unsqueeze(2).repeat(1, 1, ctx_utts.size(2), 1).view(batch_size, -1, self.ctx_encoder.output_size)
+        # utt_outs = utt_outs.contiguous().view(batch_size, -1, self.utt_encoder.output_size)
+        # attn_inputs = ctx_outs + utt_outs
+        attn_inputs = kb_embedded
+
+        # flat_ctx_words = ctx_utts.view(batch_size, -1)
+
+        # attn_words = ctx_utts.view(batch_size, -1)  # batch_size x num_words
+        attn_kb_canonical = kb_canonical.view(batch_size, -1)
+
+        # decode
+        dec_outs, dec_last, dec_ctx = self.decoder(batch_size,
+                                                   attn_inputs,
+                                                   attn_kb_canonical,
+                                                   inputs=dec_inputs,
+                                                   init_state=dec_init_state,
+                                                   mode=mode,
+                                                   gen_type=gen_type)
+        if mode == GEN:
+            return dec_ctx, labels
+        else:
+            results = self.compute_loss(dec_outs, dec_ctx, labels)
+            if return_latent:
+                results['latent_actions'] = dec_init_state
+            return results
+
+
 class ZeroShotHRED(PtrBase):
     def __init__(self, corpus, config):
         super(ZeroShotHRED, self).__init__(config)
@@ -506,7 +637,7 @@ class ZeroShotPtrHRED(PtrBase):
             return loss_pack
 
 
-class KVPtrHRED(PtrBase):
+class KVZeroShotPtrHRED(PtrBase):
     def __init__(self, corpus, config):
         super(KVPtrHRED, self).__init__(config)
 
@@ -581,7 +712,6 @@ class KVPtrHRED(PtrBase):
         out_embedded, out_outs, _, _ = self.utt_encoder(out_utts.unsqueeze(1), out_confs, return_all=True)
         out_embedded = self.utt_policy(out_embedded.squeeze(1))
 
-        kb_lens = data_feed.get('kb_lens')
         kb = data_feed.get('kb')
         kb_canonical = self.np2var(data_feed.get('kb_canonical'), LONG)
         kb_confs = data_feed.get('kb_confs')
