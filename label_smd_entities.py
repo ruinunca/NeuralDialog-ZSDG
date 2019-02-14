@@ -34,13 +34,24 @@ def canonicalize_kb_entries(in_kb):
 
 
 def canonicalize_dialog(in_dialog):
+    def matches_already_applied(target, patterns):
+        for pattern in patterns:
+            if target in pattern:
+                return True
+        return False
+
     result = copy.deepcopy(in_dialog)
     kb_entries_canonicalized = canonicalize_kb_entries(in_dialog['scenario'].get('kb', {}))
     for turn_idx, turn in enumerate(result['dialogue']):
+        if turn['turn'] != 'assistant':
+            continue
+        patterns_applied = set([])
         for kb_entry_key, kb_entry_value in kb_entries_canonicalized:
             if kb_entry_value in turn['data']['utterance']:
-                # print '[Turn {}] {} ---> {}'.format(turn_idx, kb_entry_value, kb_entry_key)
+                if matches_already_applied(kb_entry_value, patterns_applied):
+                    continue
                 turn['data']['utterance'] = turn['data']['utterance'].replace(kb_entry_value, kb_entry_key)
+                patterns_applied.add(kb_entry_key)
     result['scenario']['kb']['canonical_items'] = {key: value for key, value in kb_entries_canonicalized}
     return result
 
