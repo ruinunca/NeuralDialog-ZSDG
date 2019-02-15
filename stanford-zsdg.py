@@ -27,6 +27,16 @@ if torch.cuda.is_available():
 arg_lists = []
 parser = argparse.ArgumentParser()
 
+def fix_random_seed(seed):
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(seed)
+
 
 def add_argument_group(name):
     arg = parser.add_argument_group(name)
@@ -78,6 +88,7 @@ train_arg.add_argument('--preview_batch_num', type=int, default=50)
 train_arg.add_argument('--include_domain', type=str2bool, default=True)
 train_arg.add_argument('--include_example', type=str2bool, default=False)
 train_arg.add_argument('--include_state', type=str2bool, default=True)
+train_arg.add_argument('--random_seed', type=int, default=271)
 
 # MISC
 misc_arg = add_argument_group('Misc')
@@ -169,4 +180,5 @@ def main(config):
 if __name__ == "__main__":
     config, unparsed = get_config()
     config = process_config(config)
+    fix_random_seed(config.random_seed)
     main(config)
