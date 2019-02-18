@@ -568,6 +568,14 @@ class ZslStanfordCorpus(object):
                 for item in raw_dialog['scenario']['kb']['items']:
                     kb_items.append([KB]+self.tokenize(" ".join(["{} {}".format(k, v) for k, v in item.items()])))
 
+            kb_canonical_items = []
+            raw_canonical_kb = raw_dialog['scenario']['kb']['canonical_items']
+            
+            if not len(raw_canonical_kb):
+                raw_canonical_kb['EMPTY_KB'] = 'EMPTY'
+            for key_relation in raw_canonical_kb:
+                kb_canonical_items.append(key_relation.split('_'))
+
             dialog = [Pack(utt=[BOS, domain, BOD, EOS], speaker=USR, slots=None, domain=domain)]
             for turn in raw_dialog['dialogue']:
                 utt = turn['data']['utterance']
@@ -580,9 +588,9 @@ class ZslStanfordCorpus(object):
 
                 all_lens.append(len(utt))
                 if speaker == SYS:
-                    dialog.append(Pack(utt=utt, speaker=speaker, slots=slots, domain=domain, kb=kb_items))
+                    dialog.append(Pack(utt=utt, speaker=speaker, slots=slots, domain=domain, kb=kb_items, kb_canonical=kb_canonical_items))
                 else:
-                    dialog.append(Pack(utt=utt, speaker=speaker, slots=slots, domain=domain, kb=[]))
+                    dialog.append(Pack(utt=utt, speaker=speaker, slots=slots, domain=domain, kb=[], kb_canonical=kb_canonical_items))
 
             all_dialog_lens.append(len(dialog))
             new_dialog.append(dialog)
@@ -600,6 +608,8 @@ class ZslStanfordCorpus(object):
                 all_words.extend(turn.utt)
                 for item in turn.get('kb', []):
                     all_words.extend(item)
+                for canonical_item in turn.get('kb_canonical', []):
+                    all_words += canonical_item
 
         for resp in self.domain_descriptions:
             all_words.extend(resp.actions)
@@ -645,7 +655,8 @@ class ZslStanfordCorpus(object):
                                domain=turn.domain,
                                domain_id=self.rev_vocab[domain],
                                meta=turn.get('meta'),
-                               kb=[self._sent2id(item) for item in turn.get('kb', [])])
+                               kb=[self._sent2id(item) for item in turn.get('kb', [])],
+                               kb_canonical=[self._sent2id(item) for item in turn.get('kb_canonical', [])])
                 temp.append(id_turn)
 
             results.append(temp)
