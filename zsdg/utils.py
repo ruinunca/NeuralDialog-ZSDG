@@ -13,6 +13,7 @@ import nltk
 import sys
 from collections import defaultdict
 from argparse import Namespace
+import hashlib
 
 INT = 0
 LONG = 1
@@ -90,6 +91,7 @@ def prepare_dirs_loggers(config, script=""):
         os.makedirs(config.log_dir)
 
     dir_name = "{}-{}".format(get_time(), script) if script else get_time()
+    dir_name = "{}-{}".format(dir_name, hashlib.sha256(dir_name).hexdigest()[:8])
     config.session_dir = os.path.join(config.log_dir, dir_name)
     os.mkdir(config.session_dir)
 

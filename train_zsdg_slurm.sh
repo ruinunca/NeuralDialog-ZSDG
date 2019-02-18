@@ -14,7 +14,7 @@ module purge
 module load shared
 module load $CUDA_VERSION/blas/$CUDA_VERSION_LONG $CUDA_VERSION/fft/$CUDA_VERSION_LONG $CUDA_VERSION/nsight/$CUDA_VERSION_LONG $CUDA_VERSION/profiler/$CUDA_VERSION_LONG $CUDA_VERSION/toolkit/$CUDA_VERSION_LONG cudnn/$CUDNN_VERSION
 
-sleep $((1 + $RANDOM % 120))
+# sleep $((1 + $RANDOM % 120))
 # execute application (read in arguments from command line)
 cd /home/ishalyminov/data/dialog_knowledge_transfer/NeuralDialog-ZSDG &&  /home/ishalyminov/Envs/dialog_knowledge_transfer/bin/python -m stanford-zsdg $@
 

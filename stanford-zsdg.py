@@ -11,9 +11,10 @@ from zsdg.utils import str2bool, prepare_dirs_loggers, get_time, process_config
 from zsdg import evaluators
 import argparse
 import os
+import random
+
 import torch
 import numpy as np
-import random
 
 arg_lists = []
 parser = argparse.ArgumentParser()

@@ -18,7 +18,7 @@ def parse_report_file(in_lines, in_eval_domain):
             result['BLEU'] = float(bleu_match.group(1))
         ent_match = re.match(' Entity precision (.+) recall (.+) and f1 (.+)', line)
         if ent_match:
-            result['Ent_p'], result['Ent_R'], result['Ent_F1'] = list(map(float, [ent_match.group(1), ent_match.group(2), ent_match.group(3)]))
+            result['Ent_P'], result['Ent_R'], result['Ent_F1'] = list(map(float, [ent_match.group(1), ent_match.group(2), ent_match.group(3)]))
     return result
 
 
@@ -42,13 +42,14 @@ def write_report(in_report, in_domain, in_output_stream):
     value_lens = [len(value) for value in in_report.values()]
     assert len(set(value_lens)) == 1
     print('Domain: {}, {} measurements'.format(in_domain, value_lens[0]))
-    for key, value in in_report.items():
-        print('{}:\t min {:.3f}\tmax {:.3f}\tmean {:.3f} stddev {:.3f}'.format(key,
-                                                                               np.min(value),
-                                                                               np.max(value),
-                                                                               np.mean(value),
-                                                                               np.std(value)),
-              file=in_output_stream)
+    fields = ['BLEU', 'Ent_P', 'Ent_R', 'Ent_F1']
+    print('\t'.join(fields))
+    field_values = []
+    for field in fields:
+        value = in_report[field]
+        field_values.append('{:.3f}+/-{:.3f}'.format(np.mean(value), np.std(value)))
+    print('\t'.join(field_values), file=in_output_stream)
+
 
 def get_option_parser():
     parser = argparse.ArgumentParser()
@@ -63,3 +64,4 @@ if __name__ == '__main__':
     args = parser.parse_args()
     results = gather_metrics(args.input_folder, args.eval_domain)
     write_report(results, args.eval_domain, sys.stdout)
+
