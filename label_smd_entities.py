@@ -33,7 +33,7 @@ def canonicalize_kb_entries(in_kb):
     return result
 
 
-def canonicalize_dialog(in_dialog):
+def canonicalize_dialog(in_dialog, in_modify_utterances):
     def matches_already_applied(target, patterns):
         for pattern in patterns:
             if target in pattern:
@@ -42,6 +42,9 @@ def canonicalize_dialog(in_dialog):
 
     result = copy.deepcopy(in_dialog)
     kb_entries_canonicalized = canonicalize_kb_entries(in_dialog['scenario'].get('kb', {}))
+    result['scenario']['kb']['canonical_items'] = {key: value for key, value in kb_entries_canonicalized}
+    if not in_modify_utterances:
+        return result
     for turn_idx, turn in enumerate(result['dialogue']):
         if turn['turn'] != 'assistant':
             continue
@@ -52,11 +55,10 @@ def canonicalize_dialog(in_dialog):
                     continue
                 turn['data']['utterance'] = turn['data']['utterance'].replace(kb_entry_value, kb_entry_key)
                 patterns_applied.add(kb_entry_key)
-    result['scenario']['kb']['canonical_items'] = {key: value for key, value in kb_entries_canonicalized}
     return result
 
 
-def main(in_src_folder, in_dst_folder):
+def main(in_src_folder, in_dst_folder, in_modify_utterances):
     if os.path.exists(in_dst_folder):
         shutil.rmtree(in_dst_folder)
     shutil.copytree(in_src_folder, in_dst_folder)
@@ -69,7 +71,7 @@ def main(in_src_folder, in_dst_folder):
         with open(os.path.join(in_src_folder, filename)) as dataset_in:
             datasets[filename] = json.load(dataset_in)
         for idx, dialog in enumerate(datasets[filename]):
-            datasets[filename][idx] = canonicalize_dialog(dialog)
+            datasets[filename][idx] = canonicalize_dialog(dialog, in_modify_utterances)
         with open(os.path.join(in_dst_folder, filename), 'w') as dataset_out:
             json.dump(datasets[filename], dataset_out)
     with open(os.path.join(in_dst_folder, 'kvret_entities.json'), 'w') as entities_out:
@@ -81,6 +83,7 @@ def get_argument_parser():
     parser = ArgumentParser()
     parser.add_argument('source_folder')
     parser.add_argument('result_folder')
+    parser.add_argument('--modify_utterances', action='store_true', default=False)
     return parser
 
 
@@ -88,4 +91,5 @@ if __name__ == "__main__":
     parser = get_argument_parser()
     args = parser.parse_args()
 
-    main(args.source_folder, args.result_folder)
+    main(args.source_folder, args.result_folder, args.modify_utterances)
+
