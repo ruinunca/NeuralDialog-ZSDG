@@ -184,7 +184,8 @@ class PtrHRED(PtrBase):
                                              config.ctx_cell_size,
                                              config.dec_cell_size)
         else:
-            self.connector = IdentityConnector()
+            # self.connector = IdentityConnector()
+            self.connector = nn.Linear(config.dec_cell_size * 2, config.dec_cell_size)
 
         self.attn_size = self.ctx_encoder.output_size
 
@@ -229,17 +230,20 @@ class PtrHRED(PtrBase):
         utt_embedded, utt_outs, _, _ = self.utt_encoder(ctx_utts, ctx_confs, return_all=True)
 
         ctx_outs, ctx_last = self.ctx_encoder(utt_embedded, ctx_lens)
-        import pdb; pdb.set_trace()
-        kb_canonical_original_shape = kb_canonical.shape
-        kb_embedded = self.embedding(kb_canonical.view(-1))
-        kb_embedded = kb_embedded.view(list(kb_canonical_original_shape) + [self.config.embed_size]) 
-        kb_embedded = torch.sum(kb_embedded, -2)
+
+        # kb_embedded = self.embedding(kb_canonical.view(-1))
+        # kb_embedded = kb_embedded.view(list(kb_canonical_original_shape) + [self.config.embed_size]) 
+        # kb_embedded = torch.sum(kb_embedded, -2)
+        kb_confs = np.ones(list(kb_canonical.shape)[:-1])
+        kb_embedded, _, _, _ = self.utt_encoder(kb_canonical, self.np2var(kb_confs, FLOAT), return_all=True)
+        kb_outs, kb_last = self.ctx_encoder(kb_embedded, self.np2var(np.ones_like(kb_confs) * 6, LONG))
         # get decoder inputs
         labels = out_utts[:, 1:].contiguous()
         dec_inputs = out_utts[:, 0:-1]
 
         # create decoder initial states
-        dec_init_state = self.connector(ctx_last)
+        dec_init_state = [self.connector(torch.cat([ctx_last_i, kb_last_i], -1))
+                          for ctx_last_i, kb_last_i in zip(ctx_last, kb_last)]
 
         # attention
         ctx_outs = ctx_outs.unsqueeze(2).repeat(1, 1, ctx_utts.size(2), 1).view(batch_size, -1, self.ctx_encoder.output_size)
@@ -248,9 +252,14 @@ class PtrHRED(PtrBase):
         flat_ctx_words = ctx_utts.view(batch_size, -1)
 
         # decode
-        dec_outs, dec_last, dec_ctx = self.decoder(batch_size, attn_inputs, flat_ctx_words,
-                                                   inputs=dec_inputs, init_state=dec_init_state,
-                                                   mode=mode, gen_type=gen_type)
+        dec_outs, dec_last, dec_ctx = self.decoder(batch_size,
+                                                   attn_inputs,
+                                                   flat_ctx_words,
+                                                   kb_embedded,
+                                                   inputs=dec_inputs,
+                                                   init_state=dec_init_state,
+                                                   mode=mode,
+                                                   gen_type=gen_type)
         if mode == GEN:
             return dec_ctx, labels
         else:

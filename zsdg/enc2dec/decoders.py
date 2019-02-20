@@ -327,7 +327,7 @@ class DecoderPointerGen(BaseRNN):
         self.sentinel = nn.Parameter(torch.randn((1, 1, attn_size)), requires_grad=True)
         self.register_parameter('sentinel', self.sentinel)
 
-    def forward_step(self, input_var, hidden, attn_ctxs, attn_words, ctx_embed=None):
+    def forward_step(self, input_var, hidden, attn_ctxs, attn_words, kb_attn_ctxs, ctx_embed=None):
         """
         attn_size: number of context to attend
         :param input_var: 
@@ -354,6 +354,7 @@ class DecoderPointerGen(BaseRNN):
         else:
             attn_size = attn_words.size(1)
             combined_output, attn = self.attention(output, attn_ctxs)
+            # _, kb_attn = self.attention(output, kb_attn_ctxs)
 
             # output: batch_size x seq_len x hidden_size
             # attn: batch_size x seq_len x (attn_size+1)
@@ -384,10 +385,16 @@ class DecoderPointerGen(BaseRNN):
 
             return predicted_softmax, ptr_softmax, hidden, ptr_attn, g
 
-    def forward(self, batch_size, attn_context, attn_words,
-                inputs=None, init_state=None, mode=TEACH_FORCE,
-                gen_type='greedy', ctx_embed=None):
-
+    def forward(self,
+                batch_size,
+                attn_context,
+                attn_words,
+                kb_attn_context,
+                inputs=None,
+                init_state=None,
+                mode=TEACH_FORCE,
+                gen_type='greedy',
+                ctx_embed=None):
         # sanity checks
         ret_dict = dict()
 
@@ -439,8 +446,12 @@ class DecoderPointerGen(BaseRNN):
         # If teacher_forcing_ratio is True or False instead of a probability,
         # the unrolling can be done in graph
         if mode == TEACH_FORCE:
-            pred_softmax, ptr_softmax, decoder_hidden, attn, step_g = self.forward_step(
-                decoder_input, decoder_hidden, attn_context, attn_words, ctx_embed)
+            pred_softmax, ptr_softmax, decoder_hidden, attn, step_g = self.forward_step(decoder_input,
+                                                                                        decoder_hidden,
+                                                                                        attn_context,
+                                                                                        attn_words,
+                                                                                        kb_attn_context,
+                                                                                        ctx_embed)
 
             # in teach forcing mode, we don't need symbols.
             attentions = attn
@@ -451,8 +462,12 @@ class DecoderPointerGen(BaseRNN):
         else:
             # do free running here
             for di in range(self.max_length):
-                pred_softmax, ptr_softmax, decoder_hidden, step_attn, step_g = self.forward_step(
-                    decoder_input, decoder_hidden, attn_context, attn_words, ctx_embed)
+                pred_softmax, ptr_softmax, decoder_hidden, step_attn, step_g = self.forward_step(decoder_input,
+                                                                                                 decoder_hidden,
+                                                                                                 attn_context,
+                                                                                                 attn_words,
+                                                                                                 kb_attn_context,
+                                                                                                 ctx_embed)
 
                 symbols = decode(di, pred_softmax)
 
