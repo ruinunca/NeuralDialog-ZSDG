@@ -223,12 +223,17 @@ class PtrHRED(PtrBase):
         ctx_utts = self.np2var(data_feed['contexts'], LONG)
         ctx_confs = self.np2var(data_feed['context_confs'], FLOAT)
         out_utts = self.np2var(data_feed['outputs'], LONG)
+        kb_canonical = self.np2var(data_feed['kb_canonical'], LONG)
         batch_size = len(ctx_lens)
 
         utt_embedded, utt_outs, _, _ = self.utt_encoder(ctx_utts, ctx_confs, return_all=True)
 
         ctx_outs, ctx_last = self.ctx_encoder(utt_embedded, ctx_lens)
-
+        import pdb; pdb.set_trace()
+        kb_canonical_original_shape = kb_canonical.shape
+        kb_embedded = self.embedding(kb_canonical.view(-1))
+        kb_embedded = kb_embedded.view(list(kb_canonical_original_shape) + [self.config.embed_size]) 
+        kb_embedded = torch.sum(kb_embedded, -2)
         # get decoder inputs
         labels = out_utts[:, 1:].contiguous()
         dec_inputs = out_utts[:, 0:-1]
