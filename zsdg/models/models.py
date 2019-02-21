@@ -165,10 +165,12 @@ class PtrHRED(PtrBase):
         # build model here
         self.embedding = nn.Embedding(self.vocab_size, config.embed_size)
 
-        self.utt_encoder = RnnUttEncoder(config.utt_cell_size, config.dropout,
+        self.utt_encoder = RnnUttEncoder(config.utt_cell_size,
+                                         config.dropout,
                                          use_attn=True,
                                          vocab_size=self.vocab_size,
-                                         embedding=self.embedding, feat_size=1)
+                                         embedding=self.embedding,
+                                         feat_size=1)
 
         self.ctx_encoder = EncoderRNN(self.utt_encoder.output_size,
                                       config.ctx_cell_size,
@@ -184,15 +186,18 @@ class PtrHRED(PtrBase):
                                              config.ctx_cell_size,
                                              config.dec_cell_size)
         else:
-            # self.connector = IdentityConnector()
-            self.connector = nn.Linear(config.dec_cell_size * 2, config.dec_cell_size)
+            self.connector = IdentityConnector()
 
         self.attn_size = self.ctx_encoder.output_size
 
-        self.decoder = DecoderPointerGen(self.vocab_size, config.max_dec_len,
-                                         config.embed_size, config.dec_cell_size,
-                                         self.go_id, self.eos_id,
-                                         n_layers=1, rnn_cell=config.rnn_cell,
+        self.decoder = DecoderPointerGen(self.vocab_size,
+                                         config.max_dec_len,
+                                         config.embed_size,
+                                         config.dec_cell_size,
+                                         self.go_id,
+                                         self.eos_id,
+                                         n_layers=1,
+                                         rnn_cell=config.rnn_cell,
                                          input_dropout_p=config.dropout,
                                          dropout_p=config.dropout,
                                          attn_size=self.attn_size,
@@ -234,16 +239,16 @@ class PtrHRED(PtrBase):
         # kb_embedded = self.embedding(kb_canonical.view(-1))
         # kb_embedded = kb_embedded.view(list(kb_canonical_original_shape) + [self.config.embed_size]) 
         # kb_embedded = torch.sum(kb_embedded, -2)
-        kb_confs = np.ones(list(kb_canonical.shape)[:-1])
-        kb_embedded, _, _, _ = self.utt_encoder(kb_canonical, self.np2var(kb_confs, FLOAT), return_all=True)
-        kb_outs, kb_last = self.ctx_encoder(kb_embedded, self.np2var(np.ones_like(kb_confs) * 6, LONG))
+
+        # kb_confs = np.ones(list(kb_canonical.shape)[:-1])
+        # kb_embedded, _, _, _ = self.utt_encoder(kb_canonical, self.np2var(kb_confs, FLOAT), return_all=True)
+
         # get decoder inputs
         labels = out_utts[:, 1:].contiguous()
         dec_inputs = out_utts[:, 0:-1]
 
         # create decoder initial states
-        dec_init_state = [self.connector(torch.cat([ctx_last_i, kb_last_i], -1))
-                          for ctx_last_i, kb_last_i in zip(ctx_last, kb_last)]
+        dec_init_state = self.connector(ctx_last)
 
         # attention
         ctx_outs = ctx_outs.unsqueeze(2).repeat(1, 1, ctx_utts.size(2), 1).view(batch_size, -1, self.ctx_encoder.output_size)
