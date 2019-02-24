@@ -2,7 +2,6 @@ from __future__ import print_function
 
 import os
 import argparse
-import json
 from collections import defaultdict
 import sys
 import re
