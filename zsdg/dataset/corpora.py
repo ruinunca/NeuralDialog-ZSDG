@@ -1,15 +1,16 @@
 # -*- coding: utf-8 -*-
 # author: Tiancheng Zhao
 from __future__ import unicode_literals  # at top of module
+
 from collections import Counter
-import numpy as np
 import json
-from zsdg.utils import get_tokenize, get_chat_tokenize, missingdict, Pack
 import logging
 import os
-import itertools
 from collections import defaultdict
-import copy
+
+import numpy as np
+
+from zsdg.utils import get_tokenize, get_chat_tokenize, missingdict, Pack
 
 PAD = '<pad>'
 UNK = '<unk>'
