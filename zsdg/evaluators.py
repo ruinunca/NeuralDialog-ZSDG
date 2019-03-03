@@ -390,7 +390,7 @@ class BleuEntEvaluator(EvaluatorBase):
 
             # compute corpus level scores
             bleu = bleu_score.corpus_bleu(refs, hyps, smoothing_function=SmoothingFunction().method1)
-            report = "\nDomain: %s BLEU %f\n Entity precision %f recall %f and f1 %f\n" \
+            report = "\nDomain: %s BLEU %f entity precision %f recall %f and f1 %f\n" \
                      % (domain, bleu, ent_precision, ent_recall, ent_f1)
             reports.append(report)
 

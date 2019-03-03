@@ -12,12 +12,11 @@ import numpy as np
 def parse_report_file(in_lines, in_eval_domain):
     result = defaultdict(lambda: 0)
     for line in in_lines:
-        bleu_match = re.match('Domain: {} BLEU (.+)'.format(in_eval_domain), line)
-        if bleu_match:
-            result['BLEU'] = float(bleu_match.group(1))
-        ent_match = re.match(' Entity precision (.+) recall (.+) and f1 (.+)', line)
-        if ent_match:
-            result['Ent_P'], result['Ent_R'], result['Ent_F1'] = list(map(float, [ent_match.group(1), ent_match.group(2), ent_match.group(3)]))
+        match = re.match('Domain: {} BLEU (.+) entity precision (.+) recall (.+) and f1 (.+)'.format(in_eval_domain), line)
+        if match:
+            result['BLEU'] = float(match.group(1))
+            result['Ent_P'], result['Ent_R'], result['Ent_F1'] = list(map(float, [match.group(2), match.group(3), match.group(4)]))
+            break
     return result
 
 
