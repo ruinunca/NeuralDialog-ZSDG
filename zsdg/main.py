@@ -109,6 +109,11 @@ def train(model, train_feed, valid_feed, test_feed, config, evaluator, gen=None)
                 model.flush_valid = False
                 optimizer = model.get_optimizer(config)
 
+            loss_coef = config.dd_loss_coef
+            if 'contexts' in batch:
+                loss_coef = 1.0 - loss_coef
+            for key in loss:
+                loss[key] *= loss_coef
             model.backward(batch_cnt, loss)
             optimizer.step()
             batch_cnt += 1
