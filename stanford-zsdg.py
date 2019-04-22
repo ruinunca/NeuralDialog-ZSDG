@@ -82,6 +82,7 @@ train_arg.add_argument('--include_domain', type=str2bool, default=True)
 train_arg.add_argument('--include_example', type=str2bool, default=False)
 train_arg.add_argument('--include_state', type=str2bool, default=True)
 train_arg.add_argument('--random_seed', type=int, default=271)
+train_arg.add_argument('--dd_loss_coef', type=float, default=1.0)
 
 # MISC
 misc_arg = add_argument_group('Misc')

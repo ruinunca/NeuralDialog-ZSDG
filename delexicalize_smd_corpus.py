@@ -48,13 +48,13 @@ def process_dataset(in_dataset_folder):
         filename = 'kvret_{}_public.json'.format(dataset_name)
         with open(os.path.join(in_dataset_folder, filename)) as dataset_in:
             datasets[filename] = json.load(dataset_in)
-    with open(os.path.join(DATA_DIR, 'kvret_entities.json')) as entities_in:
+    with open(os.path.join(in_dataset_folder, 'kvret_entities.json')) as entities_in:
         entities = json.load(entities_in)
     entities_flat = flatten_entities(entities)
 
     for dataset_name, dataset in datasets.items():
         for idx, dialog in enumerate(dataset):
-            dataset[idx] = delexicalize_dialog(dialog)
+            dataset[idx] = delexicalize_dialog(dialog, entities_flat)
     return datasets
 
 
@@ -71,6 +71,8 @@ def save_dataset(in_src_folder, in_tgt_folder, in_datasets):
         else:
             with open(os.path.join(in_tgt_folder, filename), 'w') as json_out:
                 json.dump(in_datasets[filename], json_out)
+    with open(os.path.join(in_tgt_folder, 'kvret_entities.json'), 'w') as entities_out:
+        json.dump({'__entity__': ['__entity__']}, entities_out)
 
 
 def configure_argument_parser():

@@ -93,7 +93,6 @@ def generate(model, data_feed, config, evaluator, num_batch=1, dest_f=None):
                 if attn:
                     write("[[{}]]".format(attn))
                 write("-")
-
     write(evaluator.get_report(include_error=dest_f is not None))
     logger.info("Generation Done")
 
