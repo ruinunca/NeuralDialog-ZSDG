@@ -27,22 +27,35 @@ def flatten_entities(in_entities_map):
     return sorted(result, key=len, reverse=True)
 
 
-def delexicalize_utterance(in_utterance, in_kb_entries):
+def delexicalize_utterance_stage1(in_utterance, in_kb_entries):
     for kb_entry in in_kb_entries:
         if kb_entry in in_utterance:
             in_utterance = in_utterance.replace(kb_entry, '__entity__')
     return in_utterance
 
 
-def delexicalize_dialog(in_dialog, in_entities_list):
-    result = copy.deepcopy(in_dialog)
-    result['scenario']['kb'] = json.loads(json.dumps(result['scenario']['kb']).lower())
-    for turn_idx, turn in enumerate(result['dialogue']):
-        turn['data']['utterance'] = delexicalize_utterance(turn['data']['utterance'].lower(), in_entities_list)
+def delexicalize_utterance_stage2(in_utterance, in_kb_entries):
+    kb_entries_map = {}
+    utterance = in_utterance.lower()
+    for kb_entry in in_kb_entries:
+        if kb_entry in utterance and kb_entry not in kb_entries_map:
+            pos = utterance.find(kb_entry)
+            kb_entries_map[kb_entry] = pos
+            utterance = utterance.replace(kb_entry, '__entity__')
+    result = ' | '.join([key for key, value in sorted(kb_entries_map.items(), key=lambda x: x[1])])
+    print '{} ---> {}'.format(in_utterance, result)
     return result
 
 
-def process_dataset(in_dataset_folder):
+def delexicalize_dialog(in_dialog, in_entities_list, in_delexicalize_fn):
+    result = copy.deepcopy(in_dialog)
+    result['scenario']['kb'] = json.loads(json.dumps(result['scenario']['kb']).lower())
+    for turn_idx, turn in enumerate(result['dialogue']):
+        turn['data']['utterance_delex'] = in_delexicalize_fn(turn['data']['utterance'].lower(), in_entities_list)
+    return result
+
+
+def process_dataset(in_dataset_folder, in_stage):
     datasets = {}
     for dataset_name in ['train', 'dev', 'test']:
         filename = 'kvret_{}_public.json'.format(dataset_name)
@@ -52,13 +65,14 @@ def process_dataset(in_dataset_folder):
         entities = json.load(entities_in)
     entities_flat = flatten_entities(entities)
 
+    delexicalize_fn = globals()['delexicalize_utterance_{}'.format(in_stage)]
     for dataset_name, dataset in datasets.items():
         for idx, dialog in enumerate(dataset):
-            dataset[idx] = delexicalize_dialog(dialog, entities_flat)
+            dataset[idx] = delexicalize_dialog(dialog, entities_flat, delexicalize_fn)
     return datasets
 
 
-def save_dataset(in_src_folder, in_tgt_folder, in_datasets):
+def save_dataset(in_src_folder, in_tgt_folder, in_datasets, delex_entities_file=True):
     if not os.path.exists(in_tgt_folder):
         os.makedirs(in_tgt_folder)
     for filename in os.listdir(in_src_folder):
@@ -71,19 +85,21 @@ def save_dataset(in_src_folder, in_tgt_folder, in_datasets):
         else:
             with open(os.path.join(in_tgt_folder, filename), 'w') as json_out:
                 json.dump(in_datasets[filename], json_out)
-    with open(os.path.join(in_tgt_folder, 'kvret_entities.json'), 'w') as entities_out:
-        json.dump({'__entity__': ['__entity__']}, entities_out)
+    if delex_entities_file:
+        with open(os.path.join(in_tgt_folder, 'kvret_entities.json'), 'w') as entities_out:
+            json.dump({'__entity__': ['__entity__']}, entities_out)
 
 
 def configure_argument_parser():
     parser = ArgumentParser()
     parser.add_argument('dataset_folder')
     parser.add_argument('output_folder')
+    parser.add_argument('--delex_entities_file', action='store_true', default=False)
     return parser
 
 
 if __name__ == '__main__':
     parser = configure_argument_parser()
     args = parser.parse_args()
-    datasets = process_dataset(args.dataset_folder)
-    save_dataset(args.dataset_folder, args.output_folder, datasets)
+    datasets = process_dataset(args.dataset_folder, args.stage)
+    save_dataset(args.dataset_folder, args.output_folder, datasets, args.delex_entities_file)
