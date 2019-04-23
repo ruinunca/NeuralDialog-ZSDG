@@ -47,15 +47,16 @@ def delexicalize_utterance_stage2(in_utterance, in_kb_entries):
     return result
 
 
-def delexicalize_dialog(in_dialog, in_entities_list, in_delexicalize_fn):
+def delexicalize_dialog(in_dialog, in_entities_list):
     result = copy.deepcopy(in_dialog)
     result['scenario']['kb'] = json.loads(json.dumps(result['scenario']['kb']).lower())
     for turn_idx, turn in enumerate(result['dialogue']):
-        turn['data']['utterance_delex'] = in_delexicalize_fn(turn['data']['utterance'].lower(), in_entities_list)
+        turn['data']['utterance_delex_stage1'] = delexicalize_utterance_stage1(turn['data']['utterance'].lower(), in_entities_list)
+        turn['data']['utterance_delex_stage2'] = delexicalize_utterance_stage2(turn['data']['utterance'].lower(), in_entities_list)
     return result
 
 
-def process_dataset(in_dataset_folder, in_stage):
+def process_dataset(in_dataset_folder):
     datasets = {}
     for dataset_name in ['train', 'dev', 'test']:
         filename = 'kvret_{}_public.json'.format(dataset_name)
@@ -65,10 +66,9 @@ def process_dataset(in_dataset_folder, in_stage):
         entities = json.load(entities_in)
     entities_flat = flatten_entities(entities)
 
-    delexicalize_fn = globals()['delexicalize_utterance_{}'.format(in_stage)]
     for dataset_name, dataset in datasets.items():
         for idx, dialog in enumerate(dataset):
-            dataset[idx] = delexicalize_dialog(dialog, entities_flat, delexicalize_fn)
+            dataset[idx] = delexicalize_dialog(dialog, entities_flat)
     return datasets
 
 
@@ -101,5 +101,5 @@ def configure_argument_parser():
 if __name__ == '__main__':
     parser = configure_argument_parser()
     args = parser.parse_args()
-    datasets = process_dataset(args.dataset_folder, args.stage)
+    datasets = process_dataset(args.dataset_folder)
     save_dataset(args.dataset_folder, args.output_folder, datasets, args.delex_entities_file)
