@@ -43,19 +43,48 @@ def delexicalize_utterance_stage2(in_utterance, in_kb_entries):
             kb_entries_map[kb_entry] = pos
             utterance = utterance.replace(kb_entry, '__entity__')
     result = ' | '.join([key for key, value in sorted(kb_entries_map.items(), key=lambda x: x[1])])
-    print '{} ---> {}'.format(in_utterance, result)
     return result
+
+
+def extract_entities(in_utterance, in_kb_entries):
+    result = set([])
+    for kb_entry in in_kb_entries:
+        if kb_entry in in_utterance:
+            in_utterance = in_utterance.replace(kb_entry, '__entity__')
+            result.add(kb_entry)
+    return result 
+
+
+def extract_entities_from_dialog(in_dialog, in_entities):
+    result = set([])
+    for turn in in_dialog['dialogue']:
+        result.update(extract_entities(turn['data']['utterance'], in_entities))
+    return result
+
+
+def kb_entry_contains_all_entities(in_kb_entry, in_entities):
+    found = set([])
+    kb_entry_str = json.dumps(in_kb_entry)
+    for entity in in_entities:
+        if entity in kb_entry_str:
+            found.add(entity)
+    return len(found) == len(in_entities)
 
 
 def delexicalize_dialog(in_dialog, in_entities_list):
     result = copy.deepcopy(in_dialog)
     result['scenario']['kb'] = json.loads(json.dumps(result['scenario']['kb']).lower())
-    if result['scenario']['kb']['items']:
-        result['scenario']['kb']['items'] = [result['scenario']['kb']['items'][0]]
-    for turn_idx, turn in enumerate(result['dialogue']):
+    for turn in result['dialogue']:
         turn['data']['utterance'] = turn['data']['utterance'].lower()
         turn['data']['utterance_delex_stage1'] = delexicalize_utterance_stage1(turn['data']['utterance'], in_entities_list)
         turn['data']['utterance_delex_stage2'] = delexicalize_utterance_stage2(turn['data']['utterance'], in_entities_list)
+    dialog_entities = extract_entities_from_dialog(in_dialog, in_entities_list)
+    if result['scenario']['kb']['items']:
+        for entry in result['scenario']['kb']['items']:
+            if kb_entry_contains_all_entities(entry, dialog_entities):
+                result['scenario']['kb']['items'] = [entry]
+                print('New kb: {}'.format(json.dumps(entry)))
+                break
     return result
 
 
