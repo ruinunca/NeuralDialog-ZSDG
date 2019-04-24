@@ -50,9 +50,12 @@ def delexicalize_utterance_stage2(in_utterance, in_kb_entries):
 def delexicalize_dialog(in_dialog, in_entities_list):
     result = copy.deepcopy(in_dialog)
     result['scenario']['kb'] = json.loads(json.dumps(result['scenario']['kb']).lower())
+    if result['scenario']['kb']['items']:
+        result['scenario']['kb']['items'] = [result['scenario']['kb']['items'][0]]
     for turn_idx, turn in enumerate(result['dialogue']):
-        turn['data']['utterance_delex_stage1'] = delexicalize_utterance_stage1(turn['data']['utterance'].lower(), in_entities_list)
-        turn['data']['utterance_delex_stage2'] = delexicalize_utterance_stage2(turn['data']['utterance'].lower(), in_entities_list)
+        turn['data']['utterance'] = turn['data']['utterance'].lower()
+        turn['data']['utterance_delex_stage1'] = delexicalize_utterance_stage1(turn['data']['utterance'], in_entities_list)
+        turn['data']['utterance_delex_stage2'] = delexicalize_utterance_stage2(turn['data']['utterance'], in_entities_list)
     return result
 
 
