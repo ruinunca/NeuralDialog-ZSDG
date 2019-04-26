@@ -76,7 +76,9 @@ def extract_seed_data(in_dialog, in_kb_entities):
             continue
         utterance_processed = tokenizer(utterance['data']['utterance'])
         kb_entry = get_closest_kb_entry(kb_items_processed, utterance_processed)
-        result.append([kb_entry, utterance['data']['utterance']])
+        result.append({'kb': kb_entry,
+                       'utterance': utterance['data']['utterance'],
+                       'agent': utterance['turn']})
     return result
 
 
