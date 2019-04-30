@@ -359,7 +359,7 @@ class DecoderPointerGen(BaseRNN):
             # attn: batch_size x seq_len x (attn_size+1)
 
             # pointer network here
-            rnn_softmax = F.softmax(self.project(output.view(-1, self.hidden_size)), dim=1)
+            rnn_softmax = F.softmax(self.project(output.contiguous().view(-1, self.hidden_size)), dim=1)
             g = attn[:, :, 0].contiguous()
             ptr_attn = attn[:, :, 1:].contiguous()
             ptr_softmax = Variable(torch.zeros((batch_size * seq_len * attn_size, self.vocab_size)))
