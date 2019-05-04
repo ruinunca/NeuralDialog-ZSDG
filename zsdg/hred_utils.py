@@ -23,7 +23,7 @@ def generate(model, data_feed, config, evaluator, num_batch=1, dest_f=None):
         if dest_f is None:
             logger.info(msg)
         else:
-            dest_f.write(msg + '\n')
+            dest_f.write((msg + '\n').encode('utf-8'))
 
     data_feed.epoch_init(config, shuffle=num_batch is not None, verbose=False)
     evaluator.initialize()

@@ -92,7 +92,8 @@ def prepare_dirs_loggers(config, script=""):
         os.makedirs(config.log_dir)
 
     dir_name = "{}-{}".format(get_time(), script) if script else get_time()
-    dir_name = "{}-{}".format(dir_name, hashlib.sha256(json.dumps(vars(config))).hexdigest()[:8])
+    config_hash = hashlib.sha256(json.dumps(vars(config)).encode('utf-8')).hexdigest()[:8]
+    dir_name = "{}-{}".format(dir_name, config_hash)
     config.session_dir = os.path.join(config.log_dir, dir_name)
     os.mkdir(config.session_dir)
 
@@ -104,7 +105,7 @@ def prepare_dirs_loggers(config, script=""):
 
     # save config
     param_path = os.path.join(config.session_dir, "params.json")
-    with open(param_path, 'wb') as fp:
+    with open(param_path, 'w') as fp:
         json.dump(config.__dict__, fp, indent=4, sort_keys=True)
 
 
