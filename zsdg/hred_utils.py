@@ -37,7 +37,7 @@ def generate(model, data_feed, config, evaluator, num_batch=1, dest_f=None):
         if batch is None or (num_batch is not None
                              and data_feed.ptr > num_batch):
             break
-        outputs, labels = model(batch, mode=GEN, gen_type=config.gen_type)
+        outputs, labels, _ = model(batch, mode=GEN, gen_type=config.gen_type)
 
         # move from GPU to CPU
         labels = labels.cpu()
