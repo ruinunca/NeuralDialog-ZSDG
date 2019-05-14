@@ -102,7 +102,7 @@ def train(model, train_feed, valid_feed, test_feed, config, evaluator, gen=None)
                 break
 
             optimizer.zero_grad()
-            _, _, loss = model(batch, mode=GEN)
+            loss = model(batch, mode=TEACH_FORCE)
             if model.flush_valid:
                 logger.info("Flush previous valid loss")
                 best_valid_loss = np.inf
@@ -170,7 +170,7 @@ def validate(model, valid_feed, config, batch_cnt=None):
         batch = valid_feed.next_batch()
         if batch is None:
             break
-        _, _, loss = model(batch, mode=GEN)
+        loss = model(batch, mode=TEACH_FORCE)
         losses.add_loss(loss)
         losses.add_backward_loss(model.model_sel_loss(loss, batch_cnt))
 
@@ -203,7 +203,7 @@ def generate(model, data_feed, config, evaluator, num_batch=1, dest_f=None):
         if batch is None or (num_batch is not None
                              and data_feed.ptr > num_batch):
             break
-        outputs, labels, _ = model(batch, mode=GEN, gen_type=config.gen_type)
+        outputs, labels = model(batch, mode=GEN, gen_type=config.gen_type)
 
         # move from GPU to CPU
         labels = labels.cpu()
