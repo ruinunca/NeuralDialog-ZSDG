@@ -110,7 +110,7 @@ def prepare_dirs_loggers(config, script=""):
 
 
 def load_config(load_path):
-    data = json.load(open(load_path, "rb"))
+    data = json.load(open(load_path, "r"))
     config = Namespace()
     config.__dict__ = data
     return config
