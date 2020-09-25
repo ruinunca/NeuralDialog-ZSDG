@@ -104,7 +104,7 @@ train_arg.add_argument('--target_example_cnt', type=int, default=150)
 # Which model is used
 net_arg.add_argument('--action_match', type=str2bool, default=True)
 net_arg.add_argument('--use_ptr', type=str2bool, default=True)
-
+ 
 # Where to load existing model
 misc_arg.add_argument('--forward_only', type=str2bool, default=False)
 misc_arg.add_argument('--load_sess', type=str, default="ENTER_YOUR_PATH_HERE")
@@ -113,7 +113,9 @@ misc_arg.add_argument('--load_sess', type=str, default="ENTER_YOUR_PATH_HERE")
 def main(config):
     prepare_dirs_loggers(config, os.path.basename(__file__))
 
+    # Load dataset
     corpus_client = ZslStanfordCorpus(config)
+    # Get seed responses
     warmup_data = corpus_client.get_seed_responses(config.target_example_cnt)
     dial_corpus = corpus_client.get_corpus()
     train_dial, valid_dial, test_dial = dial_corpus['train'],\

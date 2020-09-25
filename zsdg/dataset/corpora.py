@@ -527,8 +527,9 @@ class ZslStanfordCorpus(object):
         speaker_map = {'assistant': SYS, 'driver': USR}
 
         def _read_file(domain):
-            with open(os.path.join(path, 'domain_descriptions/{}.tsv'.format(domain)), 'rb') as f:
+            with open(os.path.join(path, 'domain_descriptions/{}.tsv'.format(domain)), 'r') as f:
                 lines = f.readlines()
+                
                 for l in lines[1:]:
                     tokens = l.split('\t')
                     if tokens[2] == "":

@@ -60,7 +60,7 @@ class ZslSMDDialDataLoader(DataLoader):
             self.warmup_flags.append(True)
 
         if shuffle:
-            temp_batch_id = range(len(self.warmup_flags))
+            temp_batch_id = list(range(len(self.warmup_flags)))
             np.random.shuffle(temp_batch_id)
             self.batch_indexes = [self.batch_indexes[i] for i in temp_batch_id]
             self.warmup_flags = [self.warmup_flags[i] for i in temp_batch_id]
