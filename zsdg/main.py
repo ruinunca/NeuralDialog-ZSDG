@@ -11,8 +11,6 @@ import os
 from collections import defaultdict
 import logging
 
-logger = logging.getLogger()
-
 
 def get_sent(model, de_tknize, data, b_id, attn=None, attn_ctx=None, stop_eos=True, stop_pad=True):
     ws = []
@@ -90,9 +88,9 @@ def train(model, train_feed, valid_feed, test_feed, config, evaluator, gen=None)
     done_epoch = 0
     train_loss = LossManager()
     model.train()
-    logger.info(summary(model, show_weights=False))
-    logger.info("**** Training Begins ****")
-    logger.info("**** Epoch 0/{} ****".format(config.max_epoch))
+    logging.info(summary(model, show_weights=False))
+    logging.info("**** Training Begins ****")
+    logging.info("**** Epoch 0/{} ****".format(config.max_epoch))
 
     while True:
         train_feed.epoch_init(config, verbose=done_epoch==0, shuffle=True)
@@ -104,7 +102,7 @@ def train(model, train_feed, valid_feed, test_feed, config, evaluator, gen=None)
             optimizer.zero_grad()
             loss = model(batch, mode=TEACH_FORCE)
             if model.flush_valid:
-                logger.info("Flush previous valid loss")
+                logging.info("Flush previous valid loss")
                 best_valid_loss = np.inf
                 model.flush_valid = False
                 optimizer = model.get_optimizer(config)
@@ -115,14 +113,14 @@ def train(model, train_feed, valid_feed, test_feed, config, evaluator, gen=None)
             train_loss.add_loss(loss)
 
             if batch_cnt % config.print_step == 0:
-                logger.info(train_loss.pprint("Train", window=config.print_step,
+                logging.info(train_loss.pprint("Train", window=config.print_step,
                                               prefix="{}/{}-({:.3f})".format(batch_cnt % config.ckpt_step,
                                                                          config.ckpt_step,
                                                                          model.kl_w)))
 
             if batch_cnt % config.ckpt_step == 0:
-                logger.info("\n=== Evaluating Model ===")
-                logger.info(train_loss.pprint("Train"))
+                logging.info("\n=== Evaluating Model ===")
+                logging.info(train_loss.pprint("Train"))
                 done_epoch += 1
 
                 # validation
@@ -137,10 +135,10 @@ def train(model, train_feed, valid_feed, test_feed, config, evaluator, gen=None)
                         patience = max(patience,
                                        done_epoch * config.patient_increase)
                         valid_loss_threshold = valid_loss
-                        logger.info("Update patience to {}".format(patience))
+                        logging.info("Update patience to {}".format(patience))
 
                     if config.save_model:
-                        logger.info("Model Saved.")
+                        logging.info("Model Saved.")
                         torch.save(model.state_dict(),
                                    os.path.join(config.session_dir, "model"))
 
@@ -149,16 +147,16 @@ def train(model, train_feed, valid_feed, test_feed, config, evaluator, gen=None)
                 if done_epoch >= config.max_epoch \
                         or config.early_stop and patience <= done_epoch:
                     if done_epoch < config.max_epoch:
-                        logger.info("!!Early stop due to run out of patience!!")
+                        logging.info("!!Early stop due to run out of patience!!")
 
-                    logger.info("Best validation loss %f" % best_valid_loss)
+                    logging.info("Best validation loss %f" % best_valid_loss)
 
                     return
 
                 # exit eval model
                 model.train()
                 train_loss.clear()
-                logger.info("\n**** Epcoch {}/{} ****".format(done_epoch,
+                logging.info("\n**** Epoch {}/{} ****".format(done_epoch,
                                                        config.max_epoch))
 
 
@@ -175,8 +173,8 @@ def validate(model, valid_feed, config, batch_cnt=None):
         losses.add_backward_loss(model.model_sel_loss(loss, batch_cnt))
 
     valid_loss = losses.avg_loss()
-    logger.info(losses.pprint(valid_feed.name))
-    logger.info("Total valid loss {}".format(valid_loss))
+    logging.info(losses.pprint(valid_feed.name))
+    logging.info("Total valid loss {}".format(valid_loss))
 
     return valid_loss
 
@@ -189,13 +187,13 @@ def generate(model, data_feed, config, evaluator, num_batch=1, dest_f=None):
         if msg is None or msg == '':
             return
         if dest_f is None:
-            logger.info(msg)
+            logging.info(msg)
         else:
             dest_f.write(msg + '\n')
 
     data_feed.epoch_init(config, shuffle=num_batch is not None, verbose=False)
     evaluator.initialize()
-    logger.info("Generation: {} batches".format(data_feed.num_batch
+    logging.info("Generation: {} batches".format(data_feed.num_batch
                                                 if num_batch is None
                                                 else num_batch))
     while True:
@@ -227,7 +225,7 @@ def generate(model, data_feed, config, evaluator, num_batch=1, dest_f=None):
             attn_ctx = attn_ctx.cpu().data.numpy()
             attn_ctx = attn_ctx.reshape(attn_ctx.shape[0], -1)
 
-        # logger.info the batch in String.
+        # logging.info the batch in String.
         for b_id in range(pred_labels.shape[0]):
             pred_str, attn = get_sent(model, de_tknize, pred_labels, b_id, attn=pred_attns, attn_ctx=attn_ctx)
             true_str, _ = get_sent(model, de_tknize, true_labels, b_id)
@@ -245,6 +243,6 @@ def generate(model, data_feed, config, evaluator, num_batch=1, dest_f=None):
                     write("[[{}]]".format(attn))
 
     write(evaluator.get_report(include_error=dest_f is not None))
-    logger.info("Generation Done")
+    logging.info("Generation Done")
 
 

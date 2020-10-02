@@ -10,8 +10,6 @@ from zsdg.main import get_sent
 import pickle
 import os
 
-logger = logging.getLogger()
-
 
 def generate(model, data_feed, config, evaluator, num_batch=1, dest_f=None):
     model.eval()
@@ -21,13 +19,13 @@ def generate(model, data_feed, config, evaluator, num_batch=1, dest_f=None):
         if msg is None or msg == '':
             return
         if dest_f is None:
-            logger.info(msg)
+            logging.info(msg)
         else:
             dest_f.write((msg + '\n').encode('utf-8'))
 
     data_feed.epoch_init(config, shuffle=num_batch is not None, verbose=False)
     evaluator.initialize()
-    logger.info("Generation: {} batches".format(data_feed.num_batch
+    logging.info("Generation: {} batches".format(data_feed.num_batch
                                                 if num_batch is None
                                                 else num_batch))
     batch_cnt = 0
@@ -65,7 +63,7 @@ def generate(model, data_feed, config, evaluator, num_batch=1, dest_f=None):
             attn_ctx = attn_ctx.cpu().data.numpy()
             attn_ctx = attn_ctx.reshape(attn_ctx.shape[0], -1)
 
-        # logger.info the batch in String.
+        # logging.info the batch in String.
         for b_id in range(pred_labels.shape[0]):
             pred_str, attn = get_sent(model, de_tknize, pred_labels, b_id, attn=pred_attns, attn_ctx=attn_ctx)
             true_str, _ = get_sent(model, de_tknize, true_labels, b_id)
@@ -95,14 +93,14 @@ def generate(model, data_feed, config, evaluator, num_batch=1, dest_f=None):
                 write("-")
 
     write(evaluator.get_report(include_error=dest_f is not None))
-    logger.info("Generation Done")
+    logging.info("Generation Done")
 
 
 def dump_latent(model, data_feed, config, log_dir):
     model.eval()
     de_tknize = utils.get_dekenize()
     data_feed.epoch_init(config, verbose=False, shuffle=False)
-    logger.info("Dumping: {} batches".format(data_feed.num_batch))
+    logging.info("Dumping: {} batches".format(data_feed.num_batch))
     all_zs = []
     all_metas = []
     while True:
@@ -130,4 +128,4 @@ def dump_latent(model, data_feed, config, log_dir):
 
     pickle.dump({'z': all_zs, "metas": all_metas}, open(os.path.join(log_dir,
                                                                      "latent-{}.p".format(utils.get_time())), 'wb'))
-    logger.info("Dumping Done")
+    logging.info("Dumping Done")

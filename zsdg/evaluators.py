@@ -50,7 +50,6 @@ class TurnEvaluator(EvaluatorBase):
     REPRESENTATION = "rep"
     ID2TAG = "id2tag"
     TAG2ID = "tag2id"
-    logger = logging.getLogger()
 
     def __init__(self, data_name, turn_corpus, domain_meta):
         self.data_name = data_name
@@ -96,7 +95,7 @@ class TurnEvaluator(EvaluatorBase):
 
         dekenize = get_dekenize()
         utt2act = {dekenize(k.split()): v for k, v in utt2act.items()}
-        self.logger.info("Compress utt2act from {}->{}".format(len(turn_corpus), len(utt2act)))
+        logging.info("Compress utt2act from {}->{}".format(len(turn_corpus), len(utt2act)))
 
         # get entity value vocabulary
         domain_id2ent = defaultdict(set)
@@ -121,7 +120,7 @@ class TurnEvaluator(EvaluatorBase):
         """
         :return: train a dialog act tagger for system utterances 
         """
-        self.logger.info("Train a new intent tagger")
+        logging.info("Train a new intent tagger")
         all_tags, utts, tags = [], [], []
         de_tknize = get_dekenize()
         for msg in corpus:
@@ -130,7 +129,7 @@ class TurnEvaluator(EvaluatorBase):
             all_tags.extend([a['act'] for a in msg.actions])
 
         most_common = Counter(all_tags).most_common()
-        self.logger.info(most_common)
+        logging.info(most_common)
         tag_set = [t for t, c, in most_common]
         rev_tag_set = {t: i for i, t in enumerate(tag_set)}
 
@@ -158,7 +157,7 @@ class TurnEvaluator(EvaluatorBase):
 
         def print_report(score_name, scores, names):
             for s, n in zip(scores, names):
-                self.logger.info("%s: %s -> %f" % (score_name, n, s))
+                logging.info("%s: %s -> %f" % (score_name, n, s))
 
         print_report('F1', metrics.f1_score(test_y, pred_test_y, average=None),
                      tag_set)
@@ -215,7 +214,7 @@ class TurnEvaluator(EvaluatorBase):
             intent2hyps = defaultdict(list)
 
             predictions = self.domain_hyps[domain]
-            self.logger.info("Generate report for {} for {} samples".format(domain, len(predictions)))
+            logging.info("Generate report for {} for {} samples".format(domain, len(predictions)))
 
             # find entity precision, recall and f1
             tp, fp, fn = 0.0, 0.0, 0.0
@@ -314,7 +313,6 @@ class BleuEntEvaluator(EvaluatorBase):
     Use logistic regression to find F-1 score of acts
     Use string matching to find F-1 score of KB_SEARCH
     """
-    logger = logging.getLogger(__name__)
 
     def __init__(self, data_name, entity_metas):
         self.data_name = data_name
@@ -362,7 +360,7 @@ class BleuEntEvaluator(EvaluatorBase):
 
         for domain, labels in self.domain_labels.items():
             predictions = self.domain_hyps[domain]
-            self.logger.info("Generate report for {} for {} samples".format(domain, len(predictions)))
+            logging.info("Generate report for {} for {} samples".format(domain, len(predictions)))
             refs, hyps = [], []
 
             # find entity precision, recall and f1

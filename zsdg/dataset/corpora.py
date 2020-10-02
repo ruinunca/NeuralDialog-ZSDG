@@ -32,7 +32,6 @@ WILD = "%s"
 
 
 class SimDialCorpus(object):
-    logger = logging.getLogger()
 
     def __init__(self, config, max_vocab_size=10000):
         self.config = config
@@ -52,13 +51,13 @@ class SimDialCorpus(object):
         self.domain_meta = self._process_meta(train_meta)
         self.corpus = self._process_dialog(train_data)
         self.test_corpus = self._process_dialog(test_data)
-        self.logger.info("Loaded Corpus with %d, test %d"
+        logging.info("Loaded Corpus with %d, test %d"
                          % (len(self.corpus), len(self.test_corpus)))
 
         # build up a vocabulary
         self.vocab, self.rev_vocab = self._build_vocab(max_vocab_size)
 
-        self.logger.info("Done loading corpus")
+        logging.info("Done loading corpus")
 
     def _read_file(self, paths, is_train):
         """
@@ -79,7 +78,7 @@ class SimDialCorpus(object):
             if is_train and self.config.data_cap is not None \
                     and self.config.data_cap < len(conversations):
                 data_size = min(self.config.data_cap, len(conversations))
-                self.logger.info("Capped {} data to {}".format(path, data_size))
+                logging.info("Capped {} data to {}".format(path, data_size))
                 conversations = conversations[0:data_size]
 
             dialogs.extend(conversations)
@@ -161,7 +160,7 @@ class SimDialCorpus(object):
                 norm_meta[slot] = slot_meta
             all_norm_meta[domain_name] = norm_meta
         # END OF reading
-        self.logger.info("Read {} domain metas".format(len(all_norm_meta)))
+        logging.info("Read {} domain metas".format(len(all_norm_meta)))
         return all_norm_meta
 
     def _process_dialog(self, data):
@@ -189,9 +188,9 @@ class SimDialCorpus(object):
         max_len = np.max(all_length)
         mean_len = float(np.average(all_length))
         coverage = len(np.where(np.array(all_length) < self.max_utt_len)[0]) / float(len(all_length))
-        self.logger.info("Max utt len %d, mean utt len %.2f, %d covers %.2f" %
+        logging.info("Max utt len %d, mean utt len %.2f, %d covers %.2f" %
                          (max_len, mean_len, self.max_utt_len, coverage))
-        self.logger.info("Max dialog len %d, mean dialog len %.2f" %
+        logging.info("Max dialog len %d, mean dialog len %.2f" %
                          (np.max(all_dialog_len), np.average(all_dialog_len)))
         return dialogs
 
@@ -232,7 +231,7 @@ class SimDialCorpus(object):
 
         # create vocabulary list sorted by count
         speaker_str = "both" if speaker is None else speaker
-        self.logger.info("Raw vocab %d, vocab size %d, cut_off %d, train UNK rate %.4f For %s speaker"
+        logging.info("Raw vocab %d, vocab size %d, cut_off %d, train UNK rate %.4f For %s speaker"
                          % (raw_vocab_size, len(vocab_count), vocab_count[-1][1],
                             float(discard_wc) / len(all_words), speaker_str))
 
@@ -244,7 +243,7 @@ class SimDialCorpus(object):
         test_vocab_count = Counter(all_test_words).most_common()
         test_unk_cnt = np.sum([c for t, c in test_vocab_count if rev_vocab[t] == vocab.index(UNK)])
         unk_ratio = float(test_unk_cnt) / len(all_test_words)
-        self.logger.info("Test vocabulary UNK rate %.4f" % (unk_ratio))
+        logging.info("Test vocabulary UNK rate %.4f" % (unk_ratio))
 
         return vocab, rev_vocab
 
@@ -340,7 +339,7 @@ class SimDialCorpus(object):
                 results.append(temp)
             else:
                 kick_cnt += 1
-        self.logger.info("Filter {} samples from {}".format(kick_cnt, name))
+        logging.info("Filter {} samples from {}".format(kick_cnt, name))
 
         return results
 
@@ -393,7 +392,7 @@ class SimDialCorpus(object):
             train_ids.extend(ids[domain_valid_size:])
             valid_ids.extend(ids[0:domain_valid_size])
 
-        self.logger.info("Loaded Corpus with train %d, valid %d, test %d"
+        logging.info("Loaded Corpus with train %d, valid %d, test %d"
                          % (len(train_ids), len(valid_ids), len(self.test_corpus)))
 
         train_corpus = [self.corpus[i] for i in train_ids]
@@ -431,7 +430,7 @@ class SimDialCorpus(object):
             id_domain_meta[domain] = Pack(description=description,
                                           templates=templates,
                                           acts=acts)
-            self.logger.info("{} templates for {}".format(len(templates), domain))
+            logging.info("{} templates for {}".format(len(templates), domain))
 
         return id_domain_meta
 
@@ -485,8 +484,8 @@ class SimDialCorpus(object):
                 all_domains.append(domain)
 
 
-        self.logger.info("Collected {} extra samples".format(len(black_sys_utts)))
-        self.logger.info(Counter(all_domains).most_common())
+        logging.info("Collected {} extra samples".format(len(black_sys_utts)))
+        logging.info(Counter(all_domains).most_common())
         return black_sys_utts
 
     def get_turn_corpus(self, speaker):
@@ -503,7 +502,6 @@ class SimDialCorpus(object):
 
 
 class ZslStanfordCorpus(object):
-    logger = logging.getLogger(__name__)
 
     def __init__(self, config):
         self.config = config
@@ -652,8 +650,8 @@ class ZslStanfordCorpus(object):
 
             results.append(temp)
             domain_cnt.append(domain)
-        self.logger.info("Filter {} samples from {}".format(kick_cnt, name))
-        self.logger.info(Counter(domain_cnt).most_common())
+        logging.info("Filter {} samples from {}".format(kick_cnt, name))
+        logging.info(Counter(domain_cnt).most_common())
         return results
 
     def get_corpus(self):
@@ -683,7 +681,7 @@ class ZslStanfordCorpus(object):
         for v in domain_seeds.values():
             seed_responses.extend(v)
 
-        self.logger.info("Collected {} extra samples".format(len(seed_responses)))
-        self.logger.info(Counter(all_domains).most_common())
+        logging.info("Collected {} extra samples".format(len(seed_responses)))
+        logging.info(Counter(all_domains).most_common())
         return seed_responses
 

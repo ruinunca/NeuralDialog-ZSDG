@@ -142,14 +142,14 @@ class LongDataLoader(object):
             num_seg = (max_len - self.backward_size - self.step_size) // self.step_size
             cut_start, cut_end = [], []
             if num_seg > 1:
-                cut_start = range(config.step_size, num_seg * config.step_size, config.step_size)
-                cut_end = range(config.backward_size + config.step_size,
+                cut_start = list(range(config.step_size, num_seg * config.step_size, config.step_size))
+                cut_end = list(range(config.backward_size + config.step_size,
                                 num_seg * config.step_size + config.backward_size,
-                                config.step_size)
+                                config.step_size))
                 assert cut_end[-1] < max_len
 
             actual_size = min(max_len, config.backward_size)
-            temp_end = range(2, actual_size, config.step_size)
+            temp_end = list(range(2, actual_size, config.step_size))
             temp_start = [0] * len(temp_end)
 
             cut_start = temp_start + cut_start

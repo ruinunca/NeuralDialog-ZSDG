@@ -80,11 +80,6 @@ def prepare_dirs_loggers(config, script=""):
     rootLogger = logging.getLogger()
     rootLogger.setLevel(logging.DEBUG)
 
-    consoleHandler = logging.StreamHandler(sys.stdout)
-    consoleHandler.setLevel(logging.DEBUG)
-    consoleHandler.setFormatter(logFormatter)
-    rootLogger.addHandler(consoleHandler)
-
     if config.forward_only:
         return
 

@@ -192,7 +192,7 @@ class SimDialDataLoader(LongDataLoader):
     def prepare_domain_meta(self, domain_meta):
         # pre-compute domain meta since it's independent of dialogs
         # domain description just slot names
-        # domain sys/usr templates example sys or user uttearnecs
+        # domain sys/usr templates example sys or user utterances
         vec_domain_meta = {}
 
         for domain, meta in domain_meta.items():
@@ -234,7 +234,7 @@ class SimDialDataLoader(LongDataLoader):
             self.warmup_flags.append(True)
 
         if shuffle:
-            temp_batch_id = range(len(self.warmup_flags))
+            temp_batch_id = list(range(len(self.warmup_flags)))
             np.random.shuffle(temp_batch_id)
             self.grid_indexes = [self.grid_indexes[i] for i in temp_batch_id]
             self.warmup_flags = [self.warmup_flags[i] for i in temp_batch_id]
