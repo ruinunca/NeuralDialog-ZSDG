@@ -119,7 +119,7 @@ class RnnUttEncoder(nn.Module):
         enc_outs, enc_last = self.rnn(words_embeded, init_state=init_state)
 
         if self.use_attn:
-            fc1 = F.tanh(self.key_w(enc_outs))
+            fc1 = torch.tanh(self.key_w(enc_outs))
             attn = self.query(fc1).squeeze(2)
             attn = F.softmax(attn, attn.dim()-1).unsqueeze(2)
             utt_embedded = attn * enc_outs

@@ -55,8 +55,8 @@ class BaseModel(nn.Module):
     def np2var(self, inputs, dtype):
         if inputs is None:
             return None
-        return cast_type(Variable(torch.from_numpy(inputs)), dtype,
-                         self.use_gpu)
+        
+        return cast_type(Variable(torch.from_numpy(inputs)), dtype, self.use_gpu)
 
     def forward(self, *input):
         raise NotImplementedError

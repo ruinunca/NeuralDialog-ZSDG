@@ -4,7 +4,7 @@
 import torch.nn as nn
 import numpy as np
 import torch
-from torch.autograd import Variable
+
 import torch.nn.functional as F
 from zsdg.enc2dec.base_modules import BaseRNN
 from zsdg.utils import FLOAT, LONG, cast_type
@@ -88,7 +88,7 @@ class Attention(nn.Module):
             mapped_out = self.dec_w(output)
             tiled_out = mapped_out.unsqueeze(2).repeat(1, 1, input_size, 1)
             tiled_attn = mapped_attn.unsqueeze(1)
-            fc1 = F.tanh(tiled_attn+tiled_out)
+            fc1 = torch.tanh(tiled_attn+tiled_out)
             attn = self.query_w(fc1).squeeze(-1)
 
         else:
@@ -109,7 +109,7 @@ class Attention(nn.Module):
             return combined, attn
         else:
             # output -> (batch, out_len, dim)
-            output = F.tanh(
+            output = torch.tanh(
                 self.linear_out(combined.view(-1, self.dec_size+self.attn_size))).view(
                 batch_size, -1, self.dec_size)
             return output, attn
@@ -187,8 +187,9 @@ class DecoderRNN(BaseRNN):
             decoder_input = inputs
         else:
             # prepare the BOS inputs
-            bos_var = Variable(torch.LongTensor([self.sos_id]), volatile=True)
-            bos_var = cast_type(bos_var, LONG, self.use_gpu)
+            bos_var = torch.LongTensor([self.sos_id])
+            if self.use_gpu:
+                bos_var = bos_var.cuda()
             decoder_input = bos_var.expand(batch_size*beam_size, 1)
 
         if mode == GEN and gen_type == 'beam':
@@ -362,8 +363,9 @@ class DecoderPointerGen(BaseRNN):
             rnn_softmax = F.softmax(self.project(output.contiguous().view(-1, self.hidden_size)), dim=1)
             g = attn[:, :, 0].contiguous()
             ptr_attn = attn[:, :, 1:].contiguous()
-            ptr_softmax = Variable(torch.zeros((batch_size * seq_len * attn_size, self.vocab_size)))
-            ptr_softmax = cast_type(ptr_softmax, FLOAT, self.use_gpu)
+            ptr_softmax = torch.zeros((batch_size * seq_len * attn_size, self.vocab_size), dtype=torch.float32)
+            if self.use_gpu:
+                ptr_softmax = ptr_softmax.cuda()
 
             # convert words and ids into 1D
             flat_attn_words = attn_words.unsqueeze(1).repeat(1, seq_len, 1).view(-1, 1)
@@ -398,8 +400,7 @@ class DecoderPointerGen(BaseRNN):
             decoder_input = inputs
         else:
             # prepare the BOS inputs
-            bos_var = Variable(torch.LongTensor([self.sos_id]), volatile=True)
-            bos_var = cast_type(bos_var, LONG, self.use_gpu)
+            bos_var = torch.LongTensor([self.sos_id]).cuda()
             decoder_input = bos_var.expand(batch_size, 1)
 
         # append sentinel to the attention

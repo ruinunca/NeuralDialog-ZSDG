@@ -57,8 +57,7 @@ class BaseRNN(nn.Module):
         :param log_probs: [batch_size x vocab_size]
         :return: [batch_size x 1] selected token IDs
         """
-        sample = torch.Tensor(log_probs.size()).uniform_(0, 1)
-        sample = cast_type(Variable(sample), FLOAT, self.use_gpu)
+        sample = torch.Tensor(log_probs.size()).uniform_(0, 1).cuda()
 
         # compute the gumbel sample
         matrix_u = -1.0 * torch.log(-1.0 * torch.log(sample))

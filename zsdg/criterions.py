@@ -46,25 +46,24 @@ class NLLEntropy(_Loss):
         input = net_output.view(-1, net_output.size(-1))
         target = labels.view(-1)
         if self.avg_type is None:
-            loss = F.nll_loss(input, target, size_average=False,
+            loss = F.nll_loss(input, target, reduction='sum',
                               ignore_index=self.padding_idx,
                               weight=self.weight)
         elif self.avg_type == 'seq':
-            loss = F.nll_loss(input, target, size_average=False,
+            loss = F.nll_loss(input, target, reduction='mean',
                               ignore_index=self.padding_idx,
                               weight=self.weight)
-            loss = loss / batch_size
         elif self.avg_type == 'real_word':
-            loss = F.nll_loss(input, target, size_average=True,
+            loss = F.nll_loss(input, target, reduction='none',
                               ignore_index=self.padding_idx,
-                              weight=self.weight, reduce=False)
+                              weight=self.weight)
             loss = loss.view(-1, net_output.size(1))
             loss = torch.sum(loss, dim=1)
             word_cnt = torch.sum(torch.sign(labels), dim=1).float()
             loss = loss/word_cnt
             loss = torch.mean(loss)
         elif self.avg_type == 'word':
-            loss = F.nll_loss(input, target, size_average=True,
+            loss = F.nll_loss(input, target, reduction='mean',
                               ignore_index=self.padding_idx,
                               weight=self.weight)
         else:
