@@ -120,6 +120,9 @@ def str2bool(v):
 
 
 def cast_type(var, dtype, use_gpu):
+    if not torch.is_tensor(var):
+        var = torch.tensor(var)
+    
     if use_gpu:
         if dtype == INT:
             var = var.type(torch.cuda.IntTensor)
