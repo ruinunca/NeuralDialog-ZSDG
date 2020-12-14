@@ -4,6 +4,7 @@
 import torch.nn as nn
 import numpy as np
 import torch
+import logging
 
 import torch.nn.functional as F
 from zsdg.enc2dec.base_modules import BaseRNN
@@ -187,9 +188,10 @@ class DecoderRNN(BaseRNN):
             decoder_input = inputs
         else:
             # prepare the BOS inputs
-            bos_var = torch.LongTensor([self.sos_id])
             if self.use_gpu:
-                bos_var = bos_var.cuda()
+                bos_var = torch.cuda.LongTensor([self.sos_id])
+            else:
+                bos_var = torch.LongTensor([self.sos_id])
             decoder_input = bos_var.expand(batch_size*beam_size, 1)
 
         if mode == GEN and gen_type == 'beam':
@@ -400,7 +402,10 @@ class DecoderPointerGen(BaseRNN):
             decoder_input = inputs
         else:
             # prepare the BOS inputs
-            bos_var = torch.LongTensor([self.sos_id]).cuda()
+            if self.use_gpu:
+                bos_var = torch.cuda.LongTensor([self.sos_id])
+            else:
+                bos_var = torch.LongTensor([self.sos_id])
             decoder_input = bos_var.expand(batch_size, 1)
 
         # append sentinel to the attention
